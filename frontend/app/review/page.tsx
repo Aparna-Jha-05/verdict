@@ -1,0 +1,88 @@
+"use client";
+
+import { ScanLine } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import ApproveBar from "../components/review/ApproveBar";
+import BadgeBar from "../components/review/BadgeBar";
+import DocViewer from "../components/review/DocViewer";
+import FieldReview from "../components/review/FieldReview";
+import FraudPanel from "../components/review/FraudPanel";
+import Uploader from "../components/review/Uploader";
+import ValidationPanel from "../components/review/ValidationPanel";
+import { useProcess } from "../context/ProcessContext";
+
+export default function ReviewPage() {
+  const { resp, extraction, error, processing, activeKey, setActiveKey, editField } =
+    useProcess();
+  const [reviewed, setReviewed] = useState(false);
+  const fraudRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!resp) return;
+    setReviewed(false);
+    const node = fraudRef.current;
+    if (!node) return;
+    const io = new IntersectionObserver(
+      (entries) => entries.some((e) => e.isIntersecting) && setReviewed(true),
+      { threshold: 0.4 }
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, [resp]);
+
+  return (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_1fr]">
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center justify-between gap-3">
+          <Uploader />
+          {resp && <BadgeBar resp={resp} />}
+        </div>
+        {resp && extraction && (
+          <DocViewer
+            imageB64={resp.page_image_b64}
+            extraction={extraction}
+            activeKey={activeKey}
+            onHover={setActiveKey}
+          />
+        )}
+      </div>
+
+      <div className="flex flex-col gap-5">
+        {error && (
+          <div className="rounded-xl border border-red/50 bg-red/10 px-4 py-3 text-sm text-red">
+            {error}
+          </div>
+        )}
+
+        {!resp && !error && (
+          <div className="panel">
+            <div className="flex flex-col items-center gap-3 py-14 text-center text-muted">
+              <ScanLine className="h-8 w-8 text-violet/60" />
+              <p className="max-w-xs text-sm">
+                {processing
+                  ? "Processing your invoice…"
+                  : "Upload an invoice or pick a sample to see extraction, validation, and fraud checks — each field boxed on the document."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {resp && extraction && (
+          <>
+            <FieldReview
+              extraction={extraction}
+              activeKey={activeKey}
+              onHover={setActiveKey}
+              onEdit={editField}
+            />
+            <ValidationPanel validation={resp.validation} />
+            <div ref={fraudRef}>
+              <FraudPanel fraud={resp.fraud} extraction={extraction} />
+            </div>
+            <ApproveBar reviewed={reviewed} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

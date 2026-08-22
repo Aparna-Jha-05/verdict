@@ -51,6 +51,20 @@ def init_db() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ledger_invnum ON ledger(invoice_number)"
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT,
+                type TEXT,            -- processed | approved | flagged | escalated
+                invoice_number TEXT,
+                vendor_name TEXT,
+                summary TEXT,
+                severity TEXT,        -- high | medium | low | info | ok
+                meta_json TEXT
+            )
+            """
+        )
         conn.commit()
 
 
@@ -126,6 +140,87 @@ def all_invoices() -> list[dict]:
             d["line_items"] = []
         out.append(d)
     return out
+
+
+def log_activity(
+    type: str,
+    invoice_number: str = "",
+    vendor_name: str = "",
+    summary: str = "",
+    severity: str = "info",
+    meta: dict | None = None,
+) -> None:
+    with _conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO activity (ts, type, invoice_number, vendor_name, summary, severity, meta_json)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (
+                datetime.now(timezone.utc).isoformat(),
+                type,
+                invoice_number,
+                vendor_name,
+                summary,
+                severity,
+                json.dumps(meta or {}),
+            ),
+        )
+        conn.commit()
+
+
+def recent_activity(limit: int = 100) -> list[dict]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM activity ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["meta"] = json.loads(d.pop("meta_json") or "{}")
+        except (json.JSONDecodeError, TypeError):
+            d["meta"] = {}
+        out.append(d)
+    return out
+
+
+def stats() -> dict:
+    """Aggregate counters for the dashboard KPI row."""
+    with _conn() as conn:
+        def count(type: str) -> int:
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM activity WHERE type = ?", (type,)
+            ).fetchone()
+            return int(row["c"]) if row else 0
+
+        processed = count("processed")
+        flagged = count("flagged")
+        escalated = count("escalated")
+        # Approved reflects the ledger (includes seeded priors) so the KPI tile
+        # agrees with the Ledger view.
+        approved_row = conn.execute("SELECT COUNT(*) AS c FROM ledger").fetchone()
+        approved = int(approved_row["c"]) if approved_row else 0
+
+        conf_rows = conn.execute(
+            """
+            SELECT json_extract(meta_json,'$.confidence') AS conf, COUNT(*) AS c
+            FROM activity WHERE type='processed' GROUP BY conf
+            """
+        ).fetchall()
+    conf_dist = {"high": 0, "medium": 0, "low": 0}
+    for r in conf_rows:
+        key = (r["conf"] or "").lower()
+        if key in conf_dist:
+            conf_dist[key] += int(r["c"])
+    return {
+        "processed": processed,
+        "approved": approved,
+        "flagged": flagged,
+        "escalated": escalated,
+        "escalation_rate": round(escalated / processed, 3) if processed else 0.0,
+        "confidence_distribution": conf_dist,
+    }
 
 
 def approved_invoices_for_dedup() -> list[dict]:

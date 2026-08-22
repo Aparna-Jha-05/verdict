@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import AppShell from "./components/shell/AppShell";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Verdict — Verify, Catch, Approve",
@@ -13,11 +15,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark">
       <body>
         <div className="cosmic-bg" aria-hidden />
         <div className="cosmic-glow" aria-hidden />
-        {children}
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

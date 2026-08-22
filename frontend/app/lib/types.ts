@@ -70,6 +70,41 @@ export interface ApproveResponse {
   csv_row: string;
 }
 
+export interface Stats {
+  processed: number;
+  approved: number;
+  flagged: number;
+  escalated: number;
+  escalation_rate: number;
+  confidence_distribution: { high: number; medium: number; low: number };
+}
+
+export interface ActivityItem {
+  id: number;
+  ts: string;
+  type: "processed" | "approved" | "flagged" | "escalated";
+  invoice_number: string;
+  vendor_name: string;
+  summary: string;
+  severity: "high" | "medium" | "low" | "info" | "ok";
+  meta: Record<string, unknown>;
+}
+
+export interface LedgerRow {
+  id: number;
+  invoice_number: string;
+  vendor_name: string;
+  vendor_bank_account: string;
+  invoice_date: string;
+  currency: string;
+  subtotal: number | null;
+  tax: number | null;
+  total: number | null;
+  approved_at: string;
+  mock_action: string;
+  line_items: LineItem[];
+}
+
 // The scalar field keys the DocViewer/FieldReview cross-highlight on.
 export type ScalarKey =
   | "invoice_number"
