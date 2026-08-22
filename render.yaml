@@ -1,12 +1,12 @@
-# Render Blueprint for the backend. In the Render dashboard: New > Blueprint,
-# point at this repo, set AIPIPE_TOKEN as a secret. Docker build uses the
-# Dockerfile in this directory.
+# Render Blueprint (repo root). New > Blueprint, point at this repo; Render finds
+# this file automatically. Docker build uses backend/Dockerfile with the backend/
+# directory as the build context. Set AIPIPE_TOKEN as a secret when prompted.
 services:
   - type: web
     name: invoice-intelligence-api
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     plan: starter
     healthCheckPath: /health
     envVars:
