@@ -39,6 +39,14 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     store.init_db()
+    # Auto-seed the "prior approved" invoices the fraud demos depend on, but only
+    # on a fresh/empty ledger so real approvals are never duplicated. Opt out
+    # with AUTO_SEED=0.
+    if os.environ.get("AUTO_SEED", "1") != "0":
+        import seed
+
+        if seed.seed_if_empty():
+            print("Ledger was empty — seeded demo prior-invoices.")
 
 
 @app.get("/health")

@@ -52,6 +52,20 @@ def _approve(ext: Extraction) -> int:
     return ledger_id
 
 
+def seed_if_empty() -> bool:
+    """Seed the prior invoices only when the ledger is empty. Safe to call on
+    every startup — returns True if it actually seeded. Never raises."""
+    try:
+        store.init_db()
+        if store.all_invoices():
+            return False
+        main()
+        return True
+    except Exception as e:  # seeding must never block the app from booting
+        print(f"seed_if_empty skipped: {e}")
+        return False
+
+
 def main() -> None:
     store.init_db()
 
