@@ -1,0 +1,21 @@
+[
+  {
+    "po_number": "PO-1001",
+    "vendor_name": "Nebula Office Supplies",
+    "currency": "USD",
+    "total": 1080.00,
+    "line_items": [
+      {"description": "Ergonomic chair", "quantity": 4, "unit_price": 180.00, "amount": 720.00},
+      {"description": "Standing desk", "quantity": 1, "unit_price": 360.00, "amount": 360.00}
+    ]
+  },
+  {
+    "po_number": "PO-1002",
+    "vendor_name": "Orion Cloud Services",
+    "currency": "USD",
+    "total": 2400.00,
+    "line_items": [
+      {"description": "Compute credits", "quantity": 12, "unit_price": 200.00, "amount": 2400.00}
+    ]
+  }
+]

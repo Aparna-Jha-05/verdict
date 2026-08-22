@@ -1,0 +1,19 @@
+[
+  {
+    "receipt_number": "GR-5001",
+    "po_number": "PO-1001",
+    "vendor_name": "Nebula Office Supplies",
+    "line_items": [
+      {"description": "Ergonomic chair", "quantity": 4},
+      {"description": "Standing desk", "quantity": 1}
+    ]
+  },
+  {
+    "receipt_number": "GR-5002",
+    "po_number": "PO-1002",
+    "vendor_name": "Orion Cloud Services",
+    "line_items": [
+      {"description": "Compute credits", "quantity": 12}
+    ]
+  }
+]

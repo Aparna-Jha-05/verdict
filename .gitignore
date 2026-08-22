@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/invoices.db
+backend/chroma_store/
+backend/.hf_cache/
+.env
+backend/.env
+frontend/.env.local
+
+# Node / Next
+node_modules/
+frontend/.next/
+frontend/out/
+.DS_Store

@@ -1,0 +1,24 @@
+# Render Blueprint for the backend. In the Render dashboard: New > Blueprint,
+# point at this repo, set AIPIPE_TOKEN as a secret. Docker build uses the
+# Dockerfile in this directory.
+services:
+  - type: web
+    name: invoice-intelligence-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: AIPIPE_TOKEN
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: AIPIPE_VISION_MODEL
+        value: openai/gpt-4o-mini
+      - key: AIPIPE_ESCALATION_MODEL
+        value: openai/gpt-4o
+      - key: CHROMA_DIR
+        value: /app/chroma_store
+      - key: INVOICES_DB
+        value: /app/invoices.db
