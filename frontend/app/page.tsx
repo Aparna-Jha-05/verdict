@@ -63,7 +63,7 @@ export default function Home() {
     <main className="shell">
       <header className="app-header">
         <div>
-          <h1 className="app-title">Invoice Intelligence</h1>
+          <h1 className="app-title">Verdict</h1>
           <p className="app-subtitle">
             Vision-first extraction · deterministic verification · human approval gate
           </p>
