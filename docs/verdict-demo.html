@@ -1,0 +1,715 @@
+<title>Verdict</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+  rel="stylesheet"
+/>
+
+<style>
+  /* ---------- Tokens: dark-first cosmic identity ---------- */
+  :root {
+    --bg: #0a0813;
+    --bg2: #0f0b1e;
+    --card: #16122a;
+    --card2: #1b1636;
+    --line: rgba(150, 120, 240, 0.16);
+    --line-strong: rgba(170, 140, 255, 0.34);
+    --text: #ece9ff;
+    --muted: #9a92c4;
+    --faint: #6f6796;
+    --violet: #a78bfa;
+    --violet-bright: #c4b5fd;
+    --gold: #f5c451;
+    --gold-soft: #ffe6a0;
+    --green: #4ade80;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --green-bg: rgba(74, 222, 128, 0.12);
+    --red-bg: rgba(248, 113, 113, 0.12);
+    --amber-bg: rgba(251, 191, 36, 0.12);
+    --violet-bg: rgba(167, 139, 250, 0.1);
+    --shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Light variant (dark-first swap): applies when the OS asks for light and
+     the reader hasn't forced dark, or when a light theme is explicitly set. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f5f3fb;
+      --bg2: #efeaf9;
+      --card: #ffffff;
+      --card2: #faf8ff;
+      --line: rgba(120, 100, 200, 0.2);
+      --line-strong: rgba(110, 80, 190, 0.4);
+      --text: #211b3a;
+      --muted: #5f588a;
+      --faint: #8a83ad;
+      --violet: #6d3bed;
+      --violet-bright: #7c4ced;
+      --gold: #b5850f;
+      --gold-soft: #8a6400;
+      --green: #158a4d;
+      --red: #cf3a3a;
+      --amber: #a9760a;
+      --green-bg: rgba(21, 138, 77, 0.1);
+      --red-bg: rgba(207, 58, 58, 0.1);
+      --amber-bg: rgba(169, 118, 10, 0.1);
+      --violet-bg: rgba(109, 59, 237, 0.08);
+      --shadow: 0 20px 50px rgba(80, 60, 140, 0.14);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f3fb;
+    --bg2: #efeaf9;
+    --card: #ffffff;
+    --card2: #faf8ff;
+    --line: rgba(120, 100, 200, 0.2);
+    --line-strong: rgba(110, 80, 190, 0.4);
+    --text: #211b3a;
+    --muted: #5f588a;
+    --faint: #8a83ad;
+    --violet: #6d3bed;
+    --violet-bright: #7c4ced;
+    --gold: #b5850f;
+    --gold-soft: #8a6400;
+    --green: #158a4d;
+    --red: #cf3a3a;
+    --amber: #a9760a;
+    --green-bg: rgba(21, 138, 77, 0.1);
+    --red-bg: rgba(207, 58, 58, 0.1);
+    --amber-bg: rgba(169, 118, 10, 0.1);
+    --violet-bg: rgba(109, 59, 237, 0.08);
+    --shadow: 0 20px 50px rgba(80, 60, 140, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 620px at 12% -5%, rgba(124, 58, 237, 0.22), transparent 60%),
+      radial-gradient(900px 700px at 100% 8%, rgba(245, 196, 81, 0.09), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 0 24px 100px;
+  }
+
+  /* ---------- Type ---------- */
+  h1, h2, h3 {
+    font-family: "Bricolage Grotesque", "Inter", sans-serif;
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+    margin: 0 0 14px;
+  }
+  p { margin: 0 0 16px; }
+  a { color: var(--violet-bright); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Hero ---------- */
+  header.hero {
+    padding: 92px 0 40px;
+    border-bottom: 1px solid var(--line);
+  }
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+  .mark {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--violet), var(--gold));
+    color: #1a1030;
+    font-size: 22px;
+  }
+  .wordmark b {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 21px;
+    letter-spacing: -0.02em;
+  }
+  h1 {
+    font-size: clamp(40px, 7vw, 74px);
+    font-weight: 700;
+    background: linear-gradient(100deg, var(--violet-bright) 20%, var(--gold-soft));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede {
+    font-size: clamp(17px, 2.3vw, 21px);
+    color: var(--muted);
+    max-width: 62ch;
+    margin-top: 22px;
+  }
+  .thesis {
+    margin-top: 30px;
+    padding: 20px 24px;
+    border-left: 3px solid var(--gold);
+    background: var(--amber-bg);
+    border-radius: 0 12px 12px 0;
+    font-size: 17px;
+    color: var(--text);
+  }
+  .thesis b { color: var(--gold); }
+
+  .links {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 30px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 18px;
+    border-radius: 11px;
+    font-size: 14px; font-weight: 600;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    transition: all 0.18s ease;
+  }
+  .btn:hover { text-decoration: none; border-color: var(--gold); transform: translateY(-1px); }
+  .btn.primary {
+    background: linear-gradient(100deg, var(--violet), var(--gold));
+    color: #1a1030; border: none;
+  }
+
+  /* ---------- Sections ---------- */
+  section { padding-top: 68px; }
+  h2 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; }
+  .sub { color: var(--muted); font-size: 16px; margin-top: 12px; max-width: 66ch; }
+
+  /* ---------- Stat strip ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-top: 40px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 16px;
+  }
+  .stat .n {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 30px; font-weight: 700;
+    color: var(--violet-bright);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- Cards ---------- */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+  }
+  .card h3 { font-size: 18px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .card p { color: var(--muted); font-size: 14.5px; margin: 0; }
+  .tag {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; padding: 2px 8px; border-radius: 6px;
+    background: var(--violet-bg); color: var(--violet-bright);
+    white-space: nowrap;
+  }
+  .tag.det { background: var(--green-bg); color: var(--green); }
+
+  /* ---------- Pipeline diagram ---------- */
+  .diagram {
+    margin-top: 32px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 28px 20px;
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; margin: 0 auto; min-width: 780px; }
+  .d-label { font: 600 13px "Inter", sans-serif; fill: var(--text); }
+  .d-sub { font: 400 10.5px "JetBrains Mono", monospace; fill: var(--muted); }
+  .d-note { font: 500 11px "Inter", sans-serif; fill: var(--gold); }
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .swatch { width: 13px; height: 13px; border-radius: 4px; }
+
+  /* ---------- Feature list (catches) ---------- */
+  .catch {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 16px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: start;
+  }
+  .catch:last-child { border-bottom: none; }
+  .catch .num {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 22px; font-weight: 700;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+  }
+  .catch h3 { font-size: 18px; margin-bottom: 6px; }
+  .catch p { color: var(--muted); font-size: 14.5px; margin: 0; }
+  .catch .said {
+    margin-top: 8px; font-style: italic; color: var(--violet-bright); font-size: 14px;
+  }
+
+  /* ---------- Table ---------- */
+  .tbl-wrap { overflow-x: auto; margin-top: 24px; border: 1px solid var(--line); border-radius: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; background: var(--bg2); }
+  tr:last-child td { border-bottom: none; }
+  td .mono { color: var(--violet-bright); font-size: 13px; }
+
+  /* ---------- Code block ---------- */
+  pre {
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--muted);
+    margin-top: 24px;
+  }
+  pre .k { color: var(--gold); }
+  pre .c { color: var(--faint); }
+  pre .v { color: var(--violet-bright); }
+  pre .g { color: var(--green); }
+
+  /* ---------- Demo timeline ---------- */
+  .timeline { margin-top: 32px; position: relative; padding-left: 30px; }
+  .timeline::before {
+    content: ""; position: absolute; left: 9px; top: 8px; bottom: 8px;
+    width: 2px; background: linear-gradient(var(--violet), var(--gold));
+  }
+  .step { position: relative; padding: 0 0 26px 22px; }
+  .step::before {
+    content: ""; position: absolute; left: -26px; top: 4px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--gold);
+  }
+  .step .t { font-size: 11px; color: var(--gold); font-family: "JetBrains Mono", monospace; }
+  .step h3 { font-size: 17px; margin: 4px 0 6px; }
+  .step p { color: var(--muted); font-size: 14.5px; margin: 0 0 6px; }
+  .step .say {
+    font-size: 14px; color: var(--text);
+    background: var(--violet-bg); border-radius: 9px; padding: 9px 12px;
+    border-left: 2px solid var(--violet);
+  }
+
+  /* ---------- Q&A ---------- */
+  .qa { margin-top: 26px; }
+  details {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 4px 18px;
+    margin-bottom: 10px;
+  }
+  details[open] { border-color: var(--line-strong); }
+  summary {
+    cursor: pointer; padding: 14px 0; font-weight: 600; font-size: 15.5px;
+    list-style: none; display: flex; align-items: center; gap: 12px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "→"; color: var(--gold); font-weight: 700; transition: transform 0.2s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details p { color: var(--muted); font-size: 14.5px; padding: 0 0 16px 24px; margin: 0; }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    margin-top: 30px;
+    background: linear-gradient(120deg, var(--violet-bg), transparent);
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    padding: 26px;
+  }
+  .callout h3 { font-size: 20px; margin-bottom: 10px; }
+  .callout p { color: var(--muted); margin: 0; }
+  .rule {
+    display: inline-block; margin-top: 4px;
+    font-family: "JetBrains Mono", monospace; font-size: 13px;
+    color: var(--green); background: var(--green-bg);
+    padding: 6px 12px; border-radius: 8px;
+  }
+
+  footer {
+    margin-top: 80px; padding-top: 30px;
+    border-top: 1px solid var(--line);
+    color: var(--faint); font-size: 13px;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="wordmark">
+      <span class="mark">⚖️</span>
+      <b>Verdict</b>
+    </div>
+    <p class="eyebrow">Invoice Intelligence &amp; Automation</p>
+    <h1>Read anything. Verify. Catch fraud. Approve.</h1>
+    <p class="lede">
+      Verdict turns any invoice — a clean PDF, a scan, or a phone photo — into
+      structured data with a vision model, then runs it through two
+      <strong>deterministic verification layers that never call an LLM</strong>,
+      escalates the hard cases automatically, and keeps the final decision with a
+      human. It doesn't just read the document; it decides whether the document
+      can be trusted.
+    </p>
+
+    <div class="thesis">
+      The whole design points at one thing: a reviewer — or a judge — can watch the
+      hard part work, and <b>watch it catch a fraud a human would miss</b>, in under
+      90&nbsp;seconds.
+    </div>
+
+    <div class="links">
+      <a class="btn primary" href="https://verdict-three-ashen.vercel.app/">▶ Open the live app</a>
+      <a class="btn" href="https://github.com/Aparna-Jha-05/verdict">↗ Source code</a>
+      <a class="btn" href="https://invoice-intelligence-api-yhax.onrender.com/docs">API docs (Swagger)</a>
+      <a class="btn" href="https://invoice-intelligence-api-yhax.onrender.com/health">Backend health</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n">2</div><div class="l">deterministic verification layers</div></div>
+      <div class="stat"><div class="n">6</div><div class="l">validation rules, zero LLM</div></div>
+      <div class="stat"><div class="n">4</div><div class="l">app views + guided tour</div></div>
+      <div class="stat"><div class="n">&lt;90s</div><div class="l">to demo the entire arc</div></div>
+    </div>
+  </header>
+
+  <!-- ================= PROBLEM ================= -->
+  <section>
+    <p class="eyebrow">The problem</p>
+    <h2>The cheapest invoice to pay is not the safest one</h2>
+    <p class="sub">
+      Accounts-payable teams process thousands of invoices. The costly mistakes
+      aren't typos — they're a <strong>changed bank account</strong> that quietly
+      reroutes a real payment to a fraudster, a <strong>resubmitted invoice</strong>
+      with one digit altered, or a <strong>total that doesn't add up</strong> and
+      slips through because a tired human trusted the paperwork.
+    </p>
+    <p class="sub">
+      "An LLM reads a PDF" is a commodity — every team can do it. The value Verdict
+      adds is everything that happens <em>after</em> the model believes the
+      document: deterministic math, fraud forensics, and a human gate.
+    </p>
+  </section>
+
+  <!-- ================= USP ================= -->
+  <section>
+    <p class="eyebrow">The differentiator</p>
+    <h2>The model proposes. Deterministic rules decide.</h2>
+    <div class="callout">
+      <h3>One architectural rule, enforced in code</h3>
+      <p>
+        The vision model extracts and explains. It is never allowed to render a
+        verdict. Validation and fraud detection are pure Python over the extracted
+        facts — reproducible, auditable, and impossible to prompt-inject.
+      </p>
+      <span class="rule">validate.py · fraud.py · dedup.py  →  never call an LLM</span>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Vision-first <span class="tag">no OCR</span></h3>
+        <p>Every upload — PDF, scan, or photo — is normalized to a page image and read directly by a vision-language model. No brittle OCR templates that break on a skewed phone photo.</p>
+      </div>
+      <div class="card">
+        <h3>Confidence escalation <span class="tag">routing</span></h3>
+        <p>A cheap model runs by default. Low confidence, a parse failure, or an extraction-type error auto-escalates to a stronger model — pay for the hard cases only.</p>
+      </div>
+      <div class="card">
+        <h3>Deterministic fraud <span class="tag det">no LLM</span></h3>
+        <p>PDF metadata forensics, vendor bank-detail changes, and semantic near-duplicate detection — the same "verify what the model believed" pattern as validation.</p>
+      </div>
+      <div class="card">
+        <h3>Visual grounding <span class="tag">bbox</span></h3>
+        <p>Every extracted field carries a bounding box. Hover a value and its source lights up on the invoice image — the system shows its work, on the document itself.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ARCHITECTURE ================= -->
+  <section>
+    <p class="eyebrow">How it works</p>
+    <h2>One pipeline, one hard boundary</h2>
+    <p class="sub">
+      A single normalization step makes "parse a photo" and "parse a clean PDF" the
+      same code path. Everything to the right of extraction is deterministic.
+    </p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 820 300" role="img" aria-label="Verdict processing pipeline">
+        <!-- connectors -->
+        <defs>
+          <marker id="arw" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--violet)" />
+          </marker>
+        </defs>
+
+        <!-- Upload -->
+        <rect x="10" y="120" width="118" height="60" rx="12" fill="var(--card2)" stroke="var(--line-strong)"/>
+        <text class="d-label" x="69" y="146" text-anchor="middle">Upload</text>
+        <text class="d-sub" x="69" y="163" text-anchor="middle">PDF · PNG · JPG</text>
+
+        <line x1="128" y1="150" x2="168" y2="150" stroke="var(--violet)" stroke-width="2" marker-end="url(#arw)"/>
+
+        <!-- Ingest -->
+        <rect x="170" y="120" width="118" height="60" rx="12" fill="var(--card2)" stroke="var(--line-strong)"/>
+        <text class="d-label" x="229" y="146" text-anchor="middle">Ingest</text>
+        <text class="d-sub" x="229" y="163" text-anchor="middle">→ page image + meta</text>
+
+        <line x1="288" y1="150" x2="328" y2="150" stroke="var(--violet)" stroke-width="2" marker-end="url(#arw)"/>
+
+        <!-- Extract (VLM) -->
+        <rect x="330" y="118" width="126" height="64" rx="12" fill="var(--violet-bg)" stroke="var(--violet)"/>
+        <text class="d-label" x="393" y="140" text-anchor="middle">Extract</text>
+        <text class="d-sub" x="393" y="157" text-anchor="middle">vision model</text>
+        <text class="d-sub" x="393" y="171" text-anchor="middle">JSON + conf + bbox</text>
+
+        <!-- escalation loop -->
+        <path d="M393,118 C393,80 393,64 340,64 C300,64 300,96 340,110" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#arw)"/>
+        <text class="d-note" x="300" y="52" text-anchor="middle">escalate if low confidence</text>
+
+        <line x1="456" y1="150" x2="496" y2="150" stroke="var(--violet)" stroke-width="2" marker-end="url(#arw)"/>
+
+        <!-- Deterministic zone -->
+        <rect x="500" y="96" width="150" height="150" rx="14" fill="none" stroke="var(--green)" stroke-width="1.4" stroke-dasharray="6 4"/>
+        <text class="d-note" x="575" y="112" text-anchor="middle" style="fill:var(--green)">deterministic · no LLM</text>
+
+        <rect x="516" y="124" width="118" height="44" rx="10" fill="var(--green-bg)" stroke="var(--green)"/>
+        <text class="d-label" x="575" y="150" text-anchor="middle">Validate</text>
+
+        <rect x="516" y="180" width="118" height="52" rx="10" fill="var(--green-bg)" stroke="var(--green)"/>
+        <text class="d-label" x="575" y="202" text-anchor="middle">Fraud + Dedup</text>
+        <text class="d-sub" x="575" y="218" text-anchor="middle">bank · dup · metadata</text>
+
+        <line x1="650" y1="170" x2="690" y2="170" stroke="var(--violet)" stroke-width="2" marker-end="url(#arw)"/>
+
+        <!-- Human gate -->
+        <rect x="692" y="140" width="118" height="60" rx="12" fill="var(--card2)" stroke="var(--gold)"/>
+        <text class="d-label" x="751" y="166" text-anchor="middle">Human gate</text>
+        <text class="d-sub" x="751" y="183" text-anchor="middle">approve → ledger</text>
+      </svg>
+
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--violet)"></span> LLM step (extraction only)</span>
+        <span><span class="swatch" style="background:var(--green)"></span> Deterministic · reproducible</span>
+        <span><span class="swatch" style="background:var(--gold)"></span> Escalation &amp; human decision</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WHAT IT CATCHES ================= -->
+  <section>
+    <p class="eyebrow">The demo, in five catches</p>
+    <h2>Five things it catches that a human misses</h2>
+
+    <div class="catch">
+      <div class="num">1</div>
+      <div>
+        <h3>It shows its work</h3>
+        <p>A clean PDF: fields populate with confidence badges, every value boxed on the image. Hover "Total" and its source region lights up.</p>
+        <p class="said">"It shows its work — on the document itself."</p>
+      </div>
+    </div>
+    <div class="catch">
+      <div class="num">2</div>
+      <div>
+        <h3>Vision-first + escalation</h3>
+        <p>A skewed phone photo comes in with low confidence. Verdict auto-escalates to a stronger model — the ⚡ badge appears — and extracts it correctly.</p>
+        <p class="said">"We route to a stronger model by confidence, not brute force."</p>
+      </div>
+    </div>
+    <div class="catch">
+      <div class="num">3</div>
+      <div>
+        <h3>The deterministic catch</h3>
+        <p>An invoice whose total doesn't add up. Extraction succeeds — the model believed it — but the validation layer throws a red flag with the exact arithmetic.</p>
+        <p class="said">"The model believed the document. Our deterministic layer didn't."</p>
+      </div>
+    </div>
+    <div class="catch">
+      <div class="num">4</div>
+      <div>
+        <h3>Real AP fraud, caught</h3>
+        <p>A known vendor's bank account has changed versus their approved history. Verdict flags it and drafts a vendor-verification query in one click.</p>
+        <p class="said">"The most common real-world invoice fraud — and it never reaches payment."</p>
+      </div>
+    </div>
+    <div class="catch">
+      <div class="num">5</div>
+      <div>
+        <h3>The resubmission</h3>
+        <p>A near-duplicate of an approved invoice with a one-digit-different number. Exact-match checks miss it; semantic embeddings don't.</p>
+        <p class="said">"Exact-match checks miss this. Embeddings don't."</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= THE APP ================= -->
+  <section>
+    <p class="eyebrow">The application</p>
+    <h2>A working product, not a notebook</h2>
+    <p class="sub">
+      Verdict ships as a deployed multi-view app with a live backend-connection
+      indicator, dark/light themes, a command palette, and a guided tour built for
+      exactly this presentation.
+    </p>
+    <div class="grid2">
+      <div class="card"><h3>Dashboard</h3><p>KPI tiles — processed, approved, flagged, escalation rate — a confidence-distribution bar, and a live recent-activity feed.</p></div>
+      <div class="card"><h3>Review</h3><p>The full extract → validate → fraud → approve flow with bbox grounding and the one-click vendor-query draft.</p></div>
+      <div class="card"><h3>Ledger</h3><p>Searchable table of every approved invoice — the source of truth for the bank-history and duplicate checks.</p></div>
+      <div class="card"><h3>Audit</h3><p>A filterable timeline of every process, flag, escalation, and approval — the reproducibility story, made visible.</p></div>
+      <div class="card"><h3>Guided tour <span class="tag">⌘K</span></h3><p>A stepped walkthrough that auto-loads each demo sample. A command palette jumps to any view or runs any sample.</p></div>
+      <div class="card"><h3>Self-defending ledger</h3><p>Approving an invoice logs it and indexes its embedding, so the very next duplicate is blocked automatically.</p></div>
+    </div>
+  </section>
+
+  <!-- ================= STACK / CODE ================= -->
+  <section>
+    <p class="eyebrow">Under the hood</p>
+    <h2>Tech stack &amp; code</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Technology</th><th>Responsibility</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Frontend</td><td><span class="mono">Next.js 14 · Tailwind · lucide</span></td><td>Multi-view app, bbox overlay, dashboard, ledger, audit, tour</td></tr>
+          <tr><td>API</td><td><span class="mono">FastAPI · Pydantic</span></td><td>Validates requests, orchestrates the pipeline, exposes the ledger</td></tr>
+          <tr><td>Ingestion</td><td><span class="mono">PyMuPDF · Pillow</span></td><td>Any upload → page image; reads PDF metadata for forensics</td></tr>
+          <tr><td>Extraction</td><td><span class="mono">OpenRouter / AI&nbsp;Pipe (VLM)</span></td><td>Vision model → schema-constrained JSON, per-field confidence + bbox</td></tr>
+          <tr><td>Verification</td><td><span class="mono">Pure Python</span></td><td>Validation + fraud + dedup — <strong>no LLM</strong></td></tr>
+          <tr><td>Dedup</td><td><span class="mono">all-MiniLM-L6-v2 · Chroma</span></td><td>Local embeddings + vector store for semantic near-duplicates</td></tr>
+          <tr><td>Persistence</td><td><span class="mono">SQLite</span></td><td>Approval ledger, vendor bank history, activity trail</td></tr>
+          <tr><td>Deployment</td><td><span class="mono">Render · Vercel</span></td><td>Dockerized backend + static frontend, both free-tier</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><span class="c"># The pipeline, as it actually runs (route.py)</span>
+extract() <span class="k">with</span> default vision model
+  → parse JSON  →  <span class="v">validate()</span>
+  → <span class="k">if</span> confidence == <span class="g">"low"</span> or parse failed or extraction-type error:
+        re-extract() <span class="k">with</span> the stronger model   <span class="c"># escalation</span>
+  → <span class="v">fraud()</span> + <span class="v">dedup()</span>   <span class="c"># always, after extraction settles — NO LLM</span>
+  → <span class="k">return</span> {extraction, validation, fraud, model_used, escalated}
+
+<span class="c"># A genuinely bad invoice still fails after escalation.</span>
+<span class="c"># Escalation fixes extraction mistakes — not document problems.</span></pre>
+  </section>
+
+  <!-- ================= DEMO SCRIPT ================= -->
+  <section>
+    <p class="eyebrow">On stage</p>
+    <h2>The 90-second demo script</h2>
+    <p class="sub">Warm the backend first (free-tier wakes in ~40s), then run the arc. Each sample is one click from the guided tour or a chip on the Review screen.</p>
+
+    <div class="timeline">
+      <div class="step">
+        <div class="t">0:00 — 0:15</div>
+        <h3>Drop the clean PDF</h3>
+        <p>Fields populate, green confidence, boxes drawn. Hover "Total" — its box lights up.</p>
+        <div class="say">"Verdict reads the invoice and shows its work, right on the document."</div>
+      </div>
+      <div class="step">
+        <div class="t">0:15 — 0:35</div>
+        <h3>Drop the phone photo</h3>
+        <p>Low confidence → the ⚡ escalated badge appears → it extracts correctly.</p>
+        <div class="say">"Same code path for a photo. Low confidence routes to a stronger model automatically."</div>
+      </div>
+      <div class="step">
+        <div class="t">0:35 — 0:50</div>
+        <h3>Drop the wrong-total invoice</h3>
+        <p>Extraction succeeds, but validation throws a loud red flag with the arithmetic. Reject.</p>
+        <div class="say">"The model believed it. Our deterministic layer — pure math, no AI — caught it."</div>
+      </div>
+      <div class="step">
+        <div class="t">0:50 — 1:10</div>
+        <h3>Drop the changed-bank invoice</h3>
+        <p>Fraud panel flags the bank change against vendor history. Click "Draft vendor query."</p>
+        <div class="say">"This is the single most common invoice fraud in the real world — and it never reaches payment."</div>
+      </div>
+      <div class="step">
+        <div class="t">1:10 — 1:30</div>
+        <h3>Approve a clean one → show the Ledger &amp; Audit</h3>
+        <p>Mock payment fires, CSV downloads, it's logged — and now it blocks the next duplicate.</p>
+        <div class="say">"Human-approved, logged, and self-defending. That's the whole arc: read anything, escalate, verify, catch fraud, approve."</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Q&A ================= -->
+  <section>
+    <p class="eyebrow">Anticipate the room</p>
+    <h2>Questions a mentor will ask</h2>
+    <div class="qa">
+      <details>
+        <summary>Isn't this just an LLM reading a PDF?</summary>
+        <p>No — that's the commodity part. The differentiator is the two deterministic layers and the human gate wrapped around the model. The model never renders a verdict; it proposes facts, and reproducible Python decides. That separation is the product.</p>
+      </details>
+      <details>
+        <summary>What if the model extracts something wrong?</summary>
+        <p>Two safety nets. First, low confidence auto-escalates to a stronger model. Second, validation is deterministic math over the extracted numbers — a wrong total or a bad line item fails regardless of how confident the model was. And the human edits any field before approving.</p>
+      </details>
+      <details>
+        <summary>How is the fraud detection not just more AI?</summary>
+        <p>It's pure Python. Bank changes compare against the SQLite ledger of prior approvals. Duplicates use exact-match plus local embeddings. PDF forensics reads the metadata dictionary. Every flag is reproducible from stored facts — no model call, so nothing to hallucinate or prompt-inject.</p>
+      </details>
+      <details>
+        <summary>Why "flag for review" instead of "fraudulent"?</summary>
+        <p>Deliberate. The system never claims a document is authentic or fraudulent — it surfaces evidence and keeps the decision with a human. Over-claiming authenticity is how automated systems create liability. Verdict flags; people decide.</p>
+      </details>
+      <details>
+        <summary>Does it scale / cost?</summary>
+        <p>The cheap model handles the common case; only low-confidence documents pay for the stronger one — "intelligent inference layering." Embeddings run locally with no API dependency. The whole thing deploys on free tiers today.</p>
+      </details>
+      <details>
+        <summary>What's next?</summary>
+        <p>Three-way match against purchase orders and goods receipts (already scaffolded), then multi-page and multi-currency hardening. The deterministic-layer pattern extends cleanly to each new check.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    <span>Verdict · Invoice Intelligence &amp; Automation</span>
+    <span><a href="https://verdict-three-ashen.vercel.app/">verdict-three-ashen.vercel.app</a></span>
+  </footer>
+</div>
