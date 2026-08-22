@@ -7,7 +7,7 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: AIPIPE_TOKEN

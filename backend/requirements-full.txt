@@ -1,0 +1,5 @@
+# Full feature set = core deps + semantic near-duplicate detection.
+# Requires ~1 GB RAM (PyTorch) — use on Render Starter+ or locally, NOT free tier.
+-r requirements.txt
+sentence-transformers==3.3.1
+chromadb==0.5.23

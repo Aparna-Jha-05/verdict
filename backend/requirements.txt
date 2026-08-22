@@ -1,3 +1,4 @@
+# Core runtime — fits Render's free 512 MB tier comfortably.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 python-multipart==0.0.20
@@ -5,5 +6,9 @@ httpx==0.28.1
 pydantic==2.10.4
 PyMuPDF==1.25.2
 Pillow==11.1.0
-sentence-transformers==3.3.1
-chromadb==0.5.23
+
+# Semantic near-duplicate detection (sentence-transformers + chromadb) is
+# OPTIONAL and heavy (pulls in PyTorch, ~1 GB). It is NOT installed here so the
+# image fits the free tier. dedup.py degrades gracefully without it: the exact
+# invoice-number duplicate block still works; only the "altered invoice number"
+# near-duplicate demo is disabled. To enable it, install requirements-full.txt.
