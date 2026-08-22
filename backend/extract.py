@@ -16,9 +16,24 @@ import httpx
 
 from schema import EXTRACTION_SCHEMA_HINT, Extraction
 
-AIPIPE_BASE = os.environ.get("AIPIPE_BASE", "https://aipipe.org").rstrip("/")
-# OpenAI-compatible chat-completions route via AI Pipe's OpenRouter passthrough.
-CHAT_ROUTE = os.environ.get("AIPIPE_CHAT_ROUTE", "/openrouter/v1/chat/completions")
+# Provider selection. Two OpenAI-compatible gateways are supported:
+#   - OpenRouter direct: set OPENROUTER_API_KEY  (takes precedence)
+#   - AI Pipe:           set AIPIPE_TOKEN
+# Explicit AIPIPE_BASE / AIPIPE_CHAT_ROUTE overrides still win if provided.
+OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
+
+if OPENROUTER_KEY:
+    _DEFAULT_BASE = "https://openrouter.ai"
+    _DEFAULT_ROUTE = "/api/v1/chat/completions"
+    _API_KEY = OPENROUTER_KEY
+else:
+    _DEFAULT_BASE = "https://aipipe.org"
+    # OpenAI-compatible chat-completions route via AI Pipe's OpenRouter passthrough.
+    _DEFAULT_ROUTE = "/openrouter/v1/chat/completions"
+    _API_KEY = os.environ.get("AIPIPE_TOKEN")
+
+AIPIPE_BASE = os.environ.get("AIPIPE_BASE", _DEFAULT_BASE).rstrip("/")
+CHAT_ROUTE = os.environ.get("AIPIPE_CHAT_ROUTE", _DEFAULT_ROUTE)
 
 # Defaults are overridable via env so the live AI Pipe model list can be honored
 # without a code change (see spec §13).
@@ -48,10 +63,12 @@ class ExtractionError(Exception):
 
 
 def _token() -> str:
-    tok = os.environ.get("AIPIPE_TOKEN")
-    if not tok:
-        raise ExtractionError("AIPIPE_TOKEN is not set in the environment.")
-    return tok
+    if not _API_KEY:
+        raise ExtractionError(
+            "No LLM API key set. Set OPENROUTER_API_KEY (OpenRouter) or "
+            "AIPIPE_TOKEN (AI Pipe) in the environment."
+        )
+    return _API_KEY
 
 
 def _recover_json(text: str) -> dict:
@@ -122,6 +139,12 @@ def _call_vision(image_b64: str, model: str) -> str:
         "Authorization": f"Bearer {_token()}",
         "Content-Type": "application/json",
     }
+    if OPENROUTER_KEY:
+        # OpenRouter's recommended (optional) attribution headers.
+        headers["HTTP-Referer"] = os.environ.get(
+            "OPENROUTER_REFERER", "https://verdict.vercel.app"
+        )
+        headers["X-Title"] = "Verdict Invoice Intelligence"
     url = f"{AIPIPE_BASE}{CHAT_ROUTE}"
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
