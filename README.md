@@ -39,6 +39,53 @@ call an LLM. Fraud results are always *flags for human review* — never
 
 ---
 
+## The models we use (plain English)
+
+Verdict deliberately uses three *different kinds* of "intelligence," each for a
+job it's actually good at. Knowing which is which matters: the fancy AI only
+*reads*; the deciding is done by simpler, explainable methods.
+
+### 1. `gpt-4o-mini` and `gpt-4o` — the AI that reads the document
+- **What kind:** large **AI models** (specifically *vision-language models*, or
+  VLMs — LLMs that can also look at images). Made by OpenAI, accessed through the
+  OpenRouter gateway.
+- **What they do here:** look at the picture of the document and pull out the
+  fields (invoice number, total, name, skills…). `gpt-4o-mini` is the cheap, fast
+  default; `gpt-4o` is the stronger one we *escalate* to only when the first is
+  unsure.
+- **In one line:** *"The eyes that read any layout — even a crooked phone photo."*
+- **Why two:** cost control — use the small model by default, the big one only when
+  needed.
+
+### 2. `all-MiniLM-L6-v2` — the ML model that understands *meaning*
+- **What kind:** a small **machine-learning model** (a *sentence-embedding* model
+  from the open-source Sentence-Transformers library). It runs **locally**, with no
+  API and no cost.
+- **What it does:** turns a piece of text into a list of numbers that captures its
+  *meaning*, so two texts can be compared for "how similar are these really?" We use
+  it for **duplicate detection** (catch a resubmitted invoice even if a number was
+  changed) and **résumé ↔ job-description matching** (does the candidate's skill
+  match the requirement in meaning, not just exact words?).
+- **In one line:** *"The part that judges meaning, not just spelling."*
+- **Note:** it needs the `sentence-transformers` package installed; on the current
+  free-tier deploy that's turned off, so these features fall back gracefully.
+
+### 3. Robust z-score (median / MAD) — the *statistics*, not a trained model
+- **What kind:** **not AI or a trained model at all** — it's a classic **statistics**
+  formula. "Robust" means it isn't thrown off by a few weird values, and works even
+  with a small history.
+- **What it does:** the **anomaly signal**. It learns the normal range of amounts
+  from past approved documents and flags "this one is unusually large." Because it's
+  a formula, it can always *explain itself* (e.g. "+1.2σ vs history").
+- **In one line:** *"A simple, explainable ruler that spots outliers."*
+
+**The takeaway:** the powerful AI (GPT-4o) is only allowed to *read*. Everything
+that *decides* — correctness, fraud, anomalies, matches — is done by explainable
+methods (rules, meaning-similarity, statistics) and a human. That's what makes
+Verdict safe to trust with money and hiring.
+
+---
+
 ## Backend (FastAPI)
 
 ### Setup
