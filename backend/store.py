@@ -1,11 +1,6 @@
-"""SQLite persistence: the approval ledger + vendor bank-account history.
-
-The ledger is the source of truth for two fraud checks:
-  - bank-detail-change (vendor -> last approved bank account)
-  - exact/near duplicate (invoice numbers already approved)
-
-Chroma handles the semantic-dedup vector side (see dedup.py); this module owns
-the relational side only. No LLM here.
+"""SQLite persistence: a generic approval ledger across all domains, plus
+party→account history, exact-identity lookups, an activity trail, and KPI stats.
+No LLM. Records store the full extracted field set as JSON for the Ledger view.
 """
 
 from __future__ import annotations
@@ -29,97 +24,81 @@ def init_db() -> None:
     with _conn() as conn:
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS ledger (
+            CREATE TABLE IF NOT EXISTS records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                invoice_number TEXT,
-                vendor_name TEXT,
-                vendor_bank_account TEXT,
-                invoice_date TEXT,
-                currency TEXT,
-                subtotal REAL,
-                tax REAL,
-                total REAL,
-                line_items_json TEXT,
+                domain TEXT,
+                ref TEXT,
+                party TEXT,
+                account TEXT,
+                identity TEXT,
+                amount REAL,
+                doc_date TEXT,
+                fields_json TEXT,
                 approved_at TEXT,
                 mock_action TEXT
             )
             """
         )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_ledger_vendor ON ledger(vendor_name)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_ledger_invnum ON ledger(invoice_number)"
-        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rec_domain_party ON records(domain, party)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rec_identity ON records(domain, identity)")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS activity (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT,
-                type TEXT,            -- processed | approved | flagged | escalated
-                invoice_number TEXT,
-                vendor_name TEXT,
-                summary TEXT,
-                severity TEXT,        -- high | medium | low | info | ok
-                meta_json TEXT
+                ts TEXT, type TEXT, domain TEXT, ref TEXT, party TEXT,
+                summary TEXT, severity TEXT, meta_json TEXT
             )
             """
         )
         conn.commit()
 
 
-def _norm_vendor(name: str) -> str:
-    return (name or "").strip().lower()
+def _norm(s: str) -> str:
+    return (s or "").strip().lower()
 
 
-def last_bank_account_for_vendor(vendor_name: str) -> Optional[str]:
-    """Most recent non-empty bank account previously approved for this vendor."""
+def last_account_for_party(domain: str, party: str) -> Optional[str]:
     with _conn() as conn:
         row = conn.execute(
             """
-            SELECT vendor_bank_account FROM ledger
-            WHERE lower(trim(vendor_name)) = ?
-              AND trim(coalesce(vendor_bank_account,'')) <> ''
+            SELECT account FROM records
+            WHERE domain = ? AND lower(trim(party)) = ? AND trim(coalesce(account,'')) <> ''
             ORDER BY id DESC LIMIT 1
             """,
-            (_norm_vendor(vendor_name),),
+            (domain, _norm(party)),
         ).fetchone()
-    return row["vendor_bank_account"] if row else None
+    return row["account"] if row else None
 
 
-def invoice_number_exists(invoice_number: str, vendor_name: str = "") -> Optional[dict]:
-    """Return the prior ledger row if this exact invoice number was approved."""
-    inv = (invoice_number or "").strip()
-    if not inv:
+def identity_exists(domain: str, identity: str) -> Optional[dict]:
+    ident = (identity or "").strip()
+    if not ident:
         return None
     with _conn() as conn:
         row = conn.execute(
-            "SELECT * FROM ledger WHERE trim(invoice_number) = ? ORDER BY id DESC LIMIT 1",
-            (inv,),
+            "SELECT * FROM records WHERE domain = ? AND trim(identity) = ? ORDER BY id DESC LIMIT 1",
+            (domain, ident),
         ).fetchone()
     return dict(row) if row else None
 
 
-def add_invoice(record: dict) -> int:
-    """Insert an approved invoice. `record` is a flat dict of ledger columns."""
+def add_record(record: dict) -> int:
     with _conn() as conn:
         cur = conn.execute(
             """
-            INSERT INTO ledger (
-                invoice_number, vendor_name, vendor_bank_account, invoice_date,
-                currency, subtotal, tax, total, line_items_json, approved_at, mock_action
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO records (domain, ref, party, account, identity, amount, doc_date,
+                                 fields_json, approved_at, mock_action)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
             """,
             (
-                record.get("invoice_number", ""),
-                record.get("vendor_name", ""),
-                record.get("vendor_bank_account", ""),
-                record.get("invoice_date", ""),
-                record.get("currency", ""),
-                record.get("subtotal"),
-                record.get("tax"),
-                record.get("total"),
-                json.dumps(record.get("line_items", [])),
+                record.get("domain", "generic"),
+                record.get("ref", ""),
+                record.get("party", ""),
+                record.get("account", ""),
+                record.get("identity", ""),
+                record.get("amount"),
+                record.get("doc_date", ""),
+                json.dumps(record.get("fields", {})),
                 record.get("approved_at", datetime.now(timezone.utc).isoformat()),
                 record.get("mock_action", ""),
             ),
@@ -128,52 +107,35 @@ def add_invoice(record: dict) -> int:
         return int(cur.lastrowid)
 
 
-def all_invoices() -> list[dict]:
+def all_records() -> list[dict]:
     with _conn() as conn:
-        rows = conn.execute("SELECT * FROM ledger ORDER BY id DESC").fetchall()
+        rows = conn.execute("SELECT * FROM records ORDER BY id DESC").fetchall()
     out = []
     for r in rows:
         d = dict(r)
         try:
-            d["line_items"] = json.loads(d.pop("line_items_json") or "[]")
+            d["fields"] = json.loads(d.pop("fields_json") or "{}")
         except (json.JSONDecodeError, TypeError):
-            d["line_items"] = []
+            d["fields"] = {}
         out.append(d)
     return out
 
 
-def log_activity(
-    type: str,
-    invoice_number: str = "",
-    vendor_name: str = "",
-    summary: str = "",
-    severity: str = "info",
-    meta: dict | None = None,
-) -> None:
+# --------------------------- activity + stats ---------------------------
+
+def log_activity(type: str, domain: str = "", ref: str = "", party: str = "",
+                 summary: str = "", severity: str = "info", meta: dict | None = None) -> None:
     with _conn() as conn:
         conn.execute(
-            """
-            INSERT INTO activity (ts, type, invoice_number, vendor_name, summary, severity, meta_json)
-            VALUES (?,?,?,?,?,?,?)
-            """,
-            (
-                datetime.now(timezone.utc).isoformat(),
-                type,
-                invoice_number,
-                vendor_name,
-                summary,
-                severity,
-                json.dumps(meta or {}),
-            ),
+            "INSERT INTO activity (ts, type, domain, ref, party, summary, severity, meta_json) VALUES (?,?,?,?,?,?,?,?)",
+            (datetime.now(timezone.utc).isoformat(), type, domain, ref, party, summary, severity, json.dumps(meta or {})),
         )
         conn.commit()
 
 
 def recent_activity(limit: int = 100) -> list[dict]:
     with _conn() as conn:
-        rows = conn.execute(
-            "SELECT * FROM activity ORDER BY id DESC LIMIT ?", (limit,)
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM activity ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
     out = []
     for r in rows:
         d = dict(r)
@@ -186,33 +148,28 @@ def recent_activity(limit: int = 100) -> list[dict]:
 
 
 def stats() -> dict:
-    """Aggregate counters for the dashboard KPI row."""
     with _conn() as conn:
         def count(type: str) -> int:
-            row = conn.execute(
-                "SELECT COUNT(*) AS c FROM activity WHERE type = ?", (type,)
-            ).fetchone()
+            row = conn.execute("SELECT COUNT(*) AS c FROM activity WHERE type = ?", (type,)).fetchone()
             return int(row["c"]) if row else 0
 
         processed = count("processed")
         flagged = count("flagged")
         escalated = count("escalated")
-        # Approved reflects the ledger (includes seeded priors) so the KPI tile
-        # agrees with the Ledger view.
-        approved_row = conn.execute("SELECT COUNT(*) AS c FROM ledger").fetchone()
+        approved_row = conn.execute("SELECT COUNT(*) AS c FROM records").fetchone()
         approved = int(approved_row["c"]) if approved_row else 0
-
+        dom_rows = conn.execute(
+            "SELECT domain, COUNT(*) AS c FROM activity WHERE type='processed' GROUP BY domain"
+        ).fetchall()
         conf_rows = conn.execute(
-            """
-            SELECT json_extract(meta_json,'$.confidence') AS conf, COUNT(*) AS c
-            FROM activity WHERE type='processed' GROUP BY conf
-            """
+            "SELECT json_extract(meta_json,'$.confidence') AS conf, COUNT(*) AS c FROM activity WHERE type='processed' GROUP BY conf"
         ).fetchall()
     conf_dist = {"high": 0, "medium": 0, "low": 0}
     for r in conf_rows:
         key = (r["conf"] or "").lower()
         if key in conf_dist:
             conf_dist[key] += int(r["c"])
+    domains = {r["domain"] or "generic": int(r["c"]) for r in dom_rows}
     return {
         "processed": processed,
         "approved": approved,
@@ -220,21 +177,5 @@ def stats() -> dict:
         "escalated": escalated,
         "escalation_rate": round(escalated / processed, 3) if processed else 0.0,
         "confidence_distribution": conf_dist,
+        "by_domain": domains,
     }
-
-
-def approved_invoices_for_dedup() -> list[dict]:
-    """Lightweight rows the dedup layer uses to rebuild/query signatures."""
-    with _conn() as conn:
-        rows = conn.execute(
-            "SELECT id, invoice_number, vendor_name, invoice_date, total, line_items_json FROM ledger"
-        ).fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        try:
-            d["line_items"] = json.loads(d.pop("line_items_json") or "[]")
-        except (json.JSONDecodeError, TypeError):
-            d["line_items"] = []
-        out.append(d)
-    return out

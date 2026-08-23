@@ -40,7 +40,7 @@ export default function Sidebar({
             Verdict
           </div>
           <div className="mt-0.5 text-[10px] uppercase tracking-widest text-muted">
-            Invoice Intelligence
+            Document Intelligence
           </div>
         </div>
       </div>

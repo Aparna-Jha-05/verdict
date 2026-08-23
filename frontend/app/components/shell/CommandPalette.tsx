@@ -41,7 +41,9 @@ export default function CommandPalette({
       { group: "Samples", label: "Process phone photo", icon: FileText, run: async () => processFile(await loadSample("photo_scan.jpg")) },
       { group: "Samples", label: "Process wrong-total invoice", icon: FileText, run: async () => processFile(await loadSample("wrong_total.pdf")) },
       { group: "Samples", label: "Process changed-bank invoice", icon: FileText, run: async () => processFile(await loadSample("changed_bank.pdf")) },
-      { group: "Samples", label: "Process near-duplicate", icon: FileText, run: async () => processFile(await loadSample("near_duplicate.pdf")) },
+      { group: "Samples", label: "Process near-duplicate", icon: FileText, run: async () => processFile(await loadSample("near_duplicate.pdf"), true, { domain: "invoice" }) },
+      { group: "Samples", label: "Process résumé (vs job description)", icon: FileText, run: async () => processFile(await loadSample("resume.pdf"), true, { domain: "resume", secondInput: "Senior Data Scientist: Python, PyTorch, NLP, LLMs, SQL, AWS, Docker, MLOps; lead model development and ship to production." }) },
+      { group: "Samples", label: "Process receipt", icon: FileText, run: async () => processFile(await loadSample("receipt.pdf"), true, { domain: "receipt" }) },
       { group: "Help", label: "Start guided tour", icon: Sparkles, run: () => start() },
     ],
     [router, processFile, start]

@@ -71,16 +71,21 @@ export default function AuditPage() {
                   <Icon className={`h-3 w-3 ${tint}`} />
                 </div>
                 <div className="min-w-0 flex-1 pl-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={`text-xs font-semibold capitalize ${tint}`}>{a.type}</span>
+                    {a.domain && (
+                      <span className="rounded bg-violet/10 px-1.5 py-0.5 text-[10px] capitalize text-violet">
+                        {a.domain}
+                      </span>
+                    )}
                     <span className="text-[11px] text-muted">{timeAgo(a.ts)}</span>
                   </div>
                   <p className="mt-0.5 text-[13px]">{a.summary}</p>
-                  {(a.vendor_name || a.invoice_number) && (
+                  {(a.party || a.ref) && (
                     <p className="text-[11px] text-muted">
-                      {a.vendor_name}
-                      {a.vendor_name && a.invoice_number ? " · " : ""}
-                      {a.invoice_number}
+                      {a.party}
+                      {a.party && a.ref ? " · " : ""}
+                      {a.ref}
                     </p>
                   )}
                 </div>

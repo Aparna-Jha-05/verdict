@@ -6,6 +6,7 @@ import type { ProcessResponse } from "../../lib/types";
 export default function BadgeBar({ resp }: { resp: ProcessResponse }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <span className="badge border-gold/40 text-gold">{resp.domain_label}</span>
       <span className="badge border-line/40 text-violet">model: {resp.model_used}</span>
       <span className="badge">source: {resp.source_type}</span>
       {resp.escalated && (

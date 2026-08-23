@@ -1,12 +1,9 @@
-"""Escalation / routing — "intelligent inference layering".
+"""Escalation/routing + similarity, domain-parameterized.
 
-Cheap vision model by default; escalate to a stronger model only on failure:
-low overall confidence, a JSON parse/validation failure at extraction time, or a
-validation rule that looks like an extraction error rather than a document defect.
-
-Escalation fixes *extraction* mistakes. It does NOT fix *document* problems — a
-genuinely wrong total or a changed bank account must still fail after escalation.
-Fraud + dedup always run once, after extraction has settled.
+Cheap model by default; escalate to a stronger model on parse failure, low
+confidence, or missing required fields (an extraction-type error). Validation and
+integrity run through the generic deterministic engine. Similarity (e.g. résumé↔JD)
+is a deterministic cosine over local embeddings — the model never scores the match.
 """
 
 from __future__ import annotations
@@ -14,100 +11,107 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+import dedup
+import store
 from extract import DEFAULT_MODEL, ESCALATION_MODEL, ExtractionError, extract
-from fraud import run_fraud_checks
-from schema import Extraction, FraudResult, ValidationResult
-from validate import validate
-
-# Validation rules whose failure suggests the model misread the page (worth a
-# stronger model), versus rules that indicate a real document defect (don't
-# escalate — the answer won't change and we'd just burn tokens).
-_EXTRACTION_ERROR_RULES = {
-    "Required fields present",
-    "Currency present",
-    "Line-item math",
-}
+from packs.base import DomainPack, run_integrity, run_validation, semantic_signature
+from schema import (
+    Extraction,
+    IntegrityResult,
+    SimilarityResult,
+    ValidationResult,
+)
 
 
 @dataclass
 class RouteResult:
     extraction: Extraction
     validation: ValidationResult
-    fraud: FraudResult
+    integrity: IntegrityResult
+    similarity: Optional[SimilarityResult]
     model_used: str
     escalated: bool
     error: Optional[str] = None
 
 
-def _should_escalate(
-    extraction: Optional[Extraction],
-    validation: Optional[ValidationResult],
-    parse_failed: bool,
-) -> bool:
+def _should_escalate(ext: Optional[Extraction], val: Optional[ValidationResult], parse_failed: bool) -> bool:
     if parse_failed:
         return True
-    if extraction is not None and extraction.overall_confidence == "low":
+    if ext is not None and ext.overall_confidence == "low":
         return True
-    if validation is not None and not validation.passed:
-        failed_rules = {c.rule for c in validation.checks if not c.passed}
-        if failed_rules & _EXTRACTION_ERROR_RULES:
-            return True
+    if val is not None:
+        for c in val.checks:
+            if c.rule == "Required fields present" and not c.passed:
+                return True
     return False
 
 
-def process(image_b64: str, pdf_metadata: Optional[dict]) -> RouteResult:
-    """Run the full extract -> validate -> (escalate?) -> fraud pipeline."""
+def _similarity(ext: Extraction, pack: DomainPack, second_input: Optional[str]) -> Optional[SimilarityResult]:
+    if not pack.similarity or not second_input or not second_input.strip():
+        return None
+    spec = pack.similarity
+    cand = semantic_signature(ext, pack)
+    a = dedup.embed(cand)
+    b = dedup.embed(second_input)
+    if a is not None and b is not None:
+        score = max(0.0, min(1.0, dedup.cosine(a, b)))
+        strong, moderate, method = spec.strong, spec.moderate, "semantic embeddings"
+    else:
+        # Free-tier fallback: pure-Python lexical cosine (term overlap).
+        score = dedup.lexical_cosine(cand, second_input)
+        strong, moderate, method = 0.40, 0.22, "keyword overlap"
+    if score >= strong:
+        verdict = "Strong match"
+    elif score >= moderate:
+        verdict = "Moderate match"
+    else:
+        verdict = "Weak match"
+    return SimilarityResult(score=round(score, 3), label=spec.label, verdict=verdict,
+                            detail=f"{score:.0%} similarity to the {spec.second_input_label.lower()} (via {method}).")
+
+
+def process(image_b64: str, pack: DomainPack, pdf_metadata: Optional[dict],
+            second_input: Optional[str] = None) -> RouteResult:
     model_used = DEFAULT_MODEL
     escalated = False
     parse_failed = False
-    extraction: Optional[Extraction] = None
-    validation: Optional[ValidationResult] = None
+    ext: Optional[Extraction] = None
+    val: Optional[ValidationResult] = None
 
-    # --- First pass: default model ---
     try:
-        extraction = extract(image_b64, model=DEFAULT_MODEL)
-        validation = validate(extraction)
+        ext = extract(image_b64, pack, model=DEFAULT_MODEL)
+        val = run_validation(ext, pack)
     except ExtractionError:
         parse_failed = True
 
-    # --- Escalation decision ---
-    if _should_escalate(extraction, validation, parse_failed):
+    if _should_escalate(ext, val, parse_failed):
         try:
-            extraction = extract(image_b64, model=ESCALATION_MODEL)
-            validation = validate(extraction)
+            ext = extract(image_b64, pack, model=ESCALATION_MODEL)
+            val = run_validation(ext, pack)
             model_used = ESCALATION_MODEL
             escalated = True
             parse_failed = False
         except ExtractionError as e:
-            # Escalation itself failed. If the first pass also failed, surface a
-            # clean error; otherwise fall back to the first pass's result.
-            if extraction is None or validation is None:
+            if ext is None or val is None:
                 return RouteResult(
-                    extraction=Extraction(),
+                    extraction=Extraction(domain=pack.name),
                     validation=ValidationResult(passed=False, checks=[]),
-                    fraud=FraudResult(passed=False, flags=[]),
-                    model_used=ESCALATION_MODEL,
-                    escalated=True,
+                    integrity=IntegrityResult(passed=False, flags=[]),
+                    similarity=None, model_used=ESCALATION_MODEL, escalated=True,
                     error=f"Both extraction passes failed: {e}",
                 )
 
-    if extraction is None or validation is None:
+    if ext is None or val is None:
         return RouteResult(
-            extraction=Extraction(),
+            extraction=Extraction(domain=pack.name),
             validation=ValidationResult(passed=False, checks=[]),
-            fraud=FraudResult(passed=False, flags=[]),
-            model_used=model_used,
-            escalated=escalated,
+            integrity=IntegrityResult(passed=False, flags=[]),
+            similarity=None, model_used=model_used, escalated=escalated,
             error="Extraction failed and could not be recovered.",
         )
 
-    # --- Fraud + dedup always run once, after extraction is settled ---
-    fraud = run_fraud_checks(extraction, pdf_metadata)
+    integrity = run_integrity(ext, pack, pdf_metadata, store, dedup)
+    similarity = _similarity(ext, pack, second_input)
 
-    return RouteResult(
-        extraction=extraction,
-        validation=validation,
-        fraud=fraud,
-        model_used=model_used,
-        escalated=escalated,
-    )
+    return RouteResult(extraction=ext, validation=val, integrity=integrity,
+                       similarity=similarity, model_used=model_used, escalated=escalated)

@@ -6,7 +6,8 @@ import ApproveBar from "../components/review/ApproveBar";
 import BadgeBar from "../components/review/BadgeBar";
 import DocViewer from "../components/review/DocViewer";
 import FieldReview from "../components/review/FieldReview";
-import FraudPanel from "../components/review/FraudPanel";
+import IntegrityPanel from "../components/review/IntegrityPanel";
+import SimilarityPanel from "../components/review/SimilarityPanel";
 import Uploader from "../components/review/Uploader";
 import ValidationPanel from "../components/review/ValidationPanel";
 import { useProcess } from "../context/ProcessContext";
@@ -15,12 +16,12 @@ export default function ReviewPage() {
   const { resp, extraction, error, processing, activeKey, setActiveKey, editField } =
     useProcess();
   const [reviewed, setReviewed] = useState(false);
-  const fraudRef = useRef<HTMLDivElement>(null);
+  const gateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!resp) return;
     setReviewed(false);
-    const node = fraudRef.current;
+    const node = gateRef.current;
     if (!node) return;
     const io = new IntersectionObserver(
       (entries) => entries.some((e) => e.isIntersecting) && setReviewed(true),
@@ -33,17 +34,21 @@ export default function ReviewPage() {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_1fr]">
       <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between gap-3">
-          <Uploader />
-          {resp && <BadgeBar resp={resp} />}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <Uploader />
+          </div>
         </div>
         {resp && extraction && (
-          <DocViewer
-            imageB64={resp.page_image_b64}
-            extraction={extraction}
-            activeKey={activeKey}
-            onHover={setActiveKey}
-          />
+          <>
+            <BadgeBar resp={resp} />
+            <DocViewer
+              imageB64={resp.page_image_b64}
+              extraction={extraction}
+              activeKey={activeKey}
+              onHover={setActiveKey}
+            />
+          </>
         )}
       </div>
 
@@ -60,8 +65,8 @@ export default function ReviewPage() {
               <ScanLine className="h-8 w-8 text-violet/60" />
               <p className="max-w-xs text-sm">
                 {processing
-                  ? "Processing your invoice…"
-                  : "Upload an invoice or pick a sample to see extraction, validation, and fraud checks — each field boxed on the document."}
+                  ? "Processing your document…"
+                  : "Pick a document type (or Auto-detect), upload a file, and see extraction, validation, and integrity checks — each field boxed on the document."}
               </p>
             </div>
           </div>
@@ -75,9 +80,15 @@ export default function ReviewPage() {
               onHover={setActiveKey}
               onEdit={editField}
             />
+            {resp.similarity && <SimilarityPanel similarity={resp.similarity} />}
             <ValidationPanel validation={resp.validation} />
-            <div ref={fraudRef}>
-              <FraudPanel fraud={resp.fraud} extraction={extraction} />
+            <div ref={gateRef}>
+              <IntegrityPanel
+                integrity={resp.integrity}
+                label={resp.integrity_label}
+                domain={resp.domain}
+                extraction={extraction}
+              />
             </div>
             <ApproveBar reviewed={reviewed} />
           </>

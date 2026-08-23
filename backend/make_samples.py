@@ -71,6 +71,71 @@ def _draw_invoice(
     print(f"wrote {path}")
 
 
+def _draw_resume(path: str) -> None:
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    x, y = 55, 60
+
+    def line(text, size=11, dy=16, bold=False, color=(0, 0, 0)):
+        nonlocal y
+        page.insert_text((x, y), text, fontsize=size, fontname="hebo" if bold else "helv", color=color)
+        y += dy
+
+    line("Priya Sharma", size=22, dy=26, bold=True)
+    line("Senior Data Scientist", size=13, dy=18, color=(0.3, 0.3, 0.35))
+    line("priya.sharma@email.com  ·  +1 415 555 0198  ·  San Francisco, CA", dy=24)
+
+    line("SUMMARY", size=11, dy=16, bold=True)
+    line("Data scientist with 7 years building machine learning systems in Python.", dy=14)
+    line("Specializes in NLP, deep learning, and deploying models to production.", dy=24)
+
+    line("SKILLS", size=11, dy=16, bold=True)
+    line("Python, PyTorch, TensorFlow, scikit-learn, SQL, NLP, LLMs, AWS, Docker, MLOps", dy=24)
+
+    line("EXPERIENCE", size=11, dy=16, bold=True)
+    line("Senior Data Scientist — Orion Analytics", dy=14, bold=True)
+    line("2021 - Present  ·  Led an NLP platform serving 20M requests/day.", dy=18)
+    line("Data Scientist — Nimbus AI", dy=14, bold=True)
+    line("2018 - 2021  ·  Built recommendation and fraud-detection models.", dy=24)
+
+    line("EDUCATION", size=11, dy=16, bold=True)
+    line("M.S. Computer Science, Stanford University — 2018", dy=14)
+
+    doc.save(path)
+    doc.close()
+    print(f"wrote {path}")
+
+
+def _draw_receipt(path: str) -> None:
+    doc = fitz.open()
+    page = doc.new_page(width=380, height=560)
+    x, y = 40, 50
+
+    def line(text, size=11, dy=16, bold=False):
+        nonlocal y
+        page.insert_text((x, y), text, fontsize=size, fontname="hebo" if bold else "helv")
+        y += dy
+
+    line("COSMIC COFFEE ROASTERS", size=14, dy=20, bold=True)
+    line("221 Nebula Street, Portland OR", dy=14)
+    line("Date: 2026-08-12   14:32", dy=14)
+    line("Payment: Visor Card ****4417", dy=24)
+    line("-" * 34, dy=16)
+    line("Cappuccino              4.50", dy=14)
+    line("Blueberry muffin        3.25", dy=14)
+    line("Cold brew (large)       5.00", dy=16)
+    line("-" * 34, dy=16)
+    line("Subtotal               12.75", dy=14)
+    line("Tax                     1.08", dy=14)
+    line("TOTAL                  13.83", dy=16, bold=True)
+    line("-" * 34, dy=18)
+    line("Thank you! See you again.", dy=14)
+
+    doc.save(path)
+    doc.close()
+    print(f"wrote {path}")
+
+
 def main() -> None:
     # 1. Clean, reconciles.
     _draw_invoice(
@@ -176,6 +241,10 @@ def main() -> None:
     img.save(img_path, "JPEG", quality=55)
     tmp.close()
     print(f"wrote {img_path}")
+
+    # Other domains — prove the platform beyond invoices.
+    _draw_resume(os.path.join(OUT_DIR, "resume.pdf"))
+    _draw_receipt(os.path.join(OUT_DIR, "receipt.pdf"))
 
 
 if __name__ == "__main__":

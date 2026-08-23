@@ -1,8 +1,9 @@
-"""Extraction: vision-first. Send the page image to an AI Pipe vision model and
-get schema-constrained JSON with per-field value/confidence/source/bbox.
+"""Vision-first extraction, domain-parameterized.
 
-No OCR. The image goes straight to the VLM. Parsing is defensive: models wrap
-JSON in prose or fences, so we recover the JSON object before pydantic sees it.
+The prompt and output schema are built from whichever DomainPack is active, so
+one code path serves every document type. Parsing is defensive and always fills
+`additional_fields` — anything the model sees that isn't in the pack schema is
+captured, never dropped (the "new fields we've never seen" guarantee).
 """
 
 from __future__ import annotations
@@ -14,72 +15,81 @@ from typing import Optional
 
 import httpx
 
-from schema import EXTRACTION_SCHEMA_HINT, Extraction
+from packs.base import DomainPack
+from schema import ExtractedField, ExtractedTable, Extraction, TableRow
 
-# Provider selection. Two OpenAI-compatible gateways are supported:
-#   - OpenRouter direct: set OPENROUTER_API_KEY  (takes precedence)
-#   - AI Pipe:           set AIPIPE_TOKEN
-# Explicit AIPIPE_BASE / AIPIPE_CHAT_ROUTE overrides still win if provided.
+# ---- Provider selection: OpenRouter direct (preferred) or AI Pipe ----
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
-
 if OPENROUTER_KEY:
     _DEFAULT_BASE = "https://openrouter.ai"
     _DEFAULT_ROUTE = "/api/v1/chat/completions"
     _API_KEY = OPENROUTER_KEY
 else:
     _DEFAULT_BASE = "https://aipipe.org"
-    # OpenAI-compatible chat-completions route via AI Pipe's OpenRouter passthrough.
     _DEFAULT_ROUTE = "/openrouter/v1/chat/completions"
     _API_KEY = os.environ.get("AIPIPE_TOKEN")
 
 AIPIPE_BASE = os.environ.get("AIPIPE_BASE", _DEFAULT_BASE).rstrip("/")
 CHAT_ROUTE = os.environ.get("AIPIPE_CHAT_ROUTE", _DEFAULT_ROUTE)
-
-# Defaults are overridable via env so the live AI Pipe model list can be honored
-# without a code change (see spec §13).
 DEFAULT_MODEL = os.environ.get("AIPIPE_VISION_MODEL", "openai/gpt-4o-mini")
 ESCALATION_MODEL = os.environ.get("AIPIPE_ESCALATION_MODEL", "openai/gpt-4o")
-
 _TIMEOUT = float(os.environ.get("AIPIPE_TIMEOUT", "90"))
-
-SYSTEM_PROMPT = (
-    "You are an invoice extraction engine. You are given an image of a single "
-    "invoice page. Read it directly from the image (do not assume OCR text is "
-    "provided). Return ONLY a valid JSON object matching the schema below. No "
-    "prose, no markdown, no code fences.\n\n"
-    "For every scalar field return: value, confidence (high|medium|low), source "
-    "(the raw text exactly as it appears on the document), and bbox (normalized "
-    "[x0,y0,x1,y1], each between 0 and 1, top-left origin). Bounding boxes are "
-    "approximate but must still be returned; if you truly cannot locate a field, "
-    "use [0,0,0,0] and still fill value/source. Dates as YYYY-MM-DD. Numbers as "
-    "plain numbers (no currency symbols) for subtotal/tax/total and line items. "
-    "Set overall_confidence to your honest overall read quality.\n\n"
-    "SCHEMA:\n" + EXTRACTION_SCHEMA_HINT
-)
 
 
 class ExtractionError(Exception):
-    """Raised when the model call fails or JSON cannot be recovered/validated."""
+    pass
 
 
 def _token() -> str:
     if not _API_KEY:
         raise ExtractionError(
-            "No LLM API key set. Set OPENROUTER_API_KEY (OpenRouter) or "
-            "AIPIPE_TOKEN (AI Pipe) in the environment."
+            "No LLM API key set. Set OPENROUTER_API_KEY (OpenRouter) or AIPIPE_TOKEN (AI Pipe)."
         )
     return _API_KEY
 
 
+def _schema_hint(pack: DomainPack) -> str:
+    fields = {
+        f.key: {"value": "", "confidence": "high|medium|low", "source": "", "bbox": [0, 0, 0, 0]}
+        for f in pack.fields
+    }
+    tables = {}
+    for t in pack.tables:
+        row = {c.name: "" for c in t.columns}
+        row["bbox"] = [0, 0, 0, 0]
+        row["confidence"] = "high|medium|low"
+        tables[t.name] = [row]
+    template = {
+        "fields": fields,
+        "tables": tables,
+        "additional_fields": [
+            {"label": "", "value": "", "confidence": "high|medium|low", "bbox": [0, 0, 0, 0]}
+        ],
+        "overall_confidence": "high|medium|low",
+    }
+    return json.dumps(template, indent=2)
+
+
+def _system_prompt(pack: DomainPack) -> str:
+    return (
+        f"You are a document extraction engine. The image is a single page of a "
+        f"{pack.label} ({pack.description}). Read it directly from the image. Return "
+        f"ONLY a valid JSON object matching the schema below — no prose, no code fences.\n\n"
+        "For every scalar field return value, confidence (high|medium|low), source (the raw "
+        "text as seen), and bbox (normalized [x0,y0,x1,y1], 0..1, top-left origin; approximate "
+        "but always returned). Dates as YYYY-MM-DD. Numbers as plain numbers.\n\n"
+        "IMPORTANT: any meaningful field you see on the document that is NOT in the schema must "
+        "be added to 'additional_fields' with a short label — never discard information.\n\n"
+        "SCHEMA:\n" + _schema_hint(pack)
+    )
+
+
 def _recover_json(text: str) -> dict:
-    """Pull the first balanced JSON object out of a possibly-noisy response."""
     if not text:
         raise ExtractionError("Empty model response.")
-    # Strip code fences if present.
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if fenced:
         text = fenced.group(1)
-    # Find the first '{' and balance braces to the matching '}'.
     start = text.find("{")
     if start == -1:
         raise ExtractionError("No JSON object found in model response.")
@@ -103,48 +113,32 @@ def _recover_json(text: str) -> dict:
         elif ch == "}":
             depth -= 1
             if depth == 0:
-                candidate = text[start : i + 1]
                 try:
-                    return json.loads(candidate)
+                    return json.loads(text[start : i + 1])
                 except json.JSONDecodeError as e:
                     raise ExtractionError(f"Malformed JSON: {e}") from e
     raise ExtractionError("Unbalanced JSON object in model response.")
 
 
-def _call_vision(image_b64: str, model: str) -> str:
-    """One chat-completions call with a base64 image block. Returns raw content."""
+def _call(image_b64: str, model: str, system: str, user: str) -> str:
     payload = {
         "model": model,
         "temperature": 0.1,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": "Extract this invoice into the schema JSON.",
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{image_b64}"
-                        },
-                    },
+                    {"type": "text", "text": user},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}},
                 ],
             },
         ],
     }
-    headers = {
-        "Authorization": f"Bearer {_token()}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Authorization": f"Bearer {_token()}", "Content-Type": "application/json"}
     if OPENROUTER_KEY:
-        # OpenRouter's recommended (optional) attribution headers.
-        headers["HTTP-Referer"] = os.environ.get(
-            "OPENROUTER_REFERER", "https://verdict.vercel.app"
-        )
-        headers["X-Title"] = "Verdict Invoice Intelligence"
+        headers["HTTP-Referer"] = os.environ.get("OPENROUTER_REFERER", "https://verdict-three-ashen.vercel.app")
+        headers["X-Title"] = "Verdict Document Intelligence"
     url = f"{AIPIPE_BASE}{CHAT_ROUTE}"
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
@@ -152,22 +146,88 @@ def _call_vision(image_b64: str, model: str) -> str:
     except httpx.HTTPError as e:
         raise ExtractionError(f"AI Pipe request failed: {e}") from e
     if resp.status_code >= 400:
-        raise ExtractionError(
-            f"AI Pipe returned {resp.status_code}: {resp.text[:300]}"
-        )
+        raise ExtractionError(f"AI Pipe returned {resp.status_code}: {resp.text[:300]}")
     try:
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        return resp.json()["choices"][0]["message"]["content"]
     except (KeyError, IndexError, ValueError) as e:
         raise ExtractionError(f"Unexpected AI Pipe response shape: {e}") from e
 
 
-def extract(image_b64: str, model: Optional[str] = None) -> Extraction:
-    """Run one extraction pass. Raises ExtractionError on failure/parse error."""
+def _parse(obj: dict, pack: DomainPack) -> Extraction:
+    field_specs = {f.key: f for f in pack.fields}
+    table_specs = {t.name: t for t in pack.tables}
+
+    fields = []
+    raw_fields = obj.get("fields") or {}
+    extras = list(obj.get("additional_fields") or [])
+    for key, spec in field_specs.items():
+        cell = raw_fields.get(key) or {}
+        if not isinstance(cell, dict):
+            cell = {"value": cell}
+        fields.append(ExtractedField(
+            key=key, label=spec.label, type=spec.type,
+            value=cell.get("value", ""), confidence=cell.get("confidence", "low"),
+            source=cell.get("source", ""), bbox=cell.get("bbox", [0, 0, 0, 0]),
+        ))
+    # Any model-returned field keys not in the schema become additional_fields.
+    for key, cell in raw_fields.items():
+        if key not in field_specs and isinstance(cell, dict) and cell.get("value"):
+            extras.append({"label": key, "value": cell.get("value"),
+                           "confidence": cell.get("confidence", "low"), "bbox": cell.get("bbox", [0, 0, 0, 0])})
+
+    tables = []
+    raw_tables = obj.get("tables") or {}
+    for name, spec in table_specs.items():
+        rows_in = raw_tables.get(name) or []
+        rows = []
+        cols = [c.name for c in spec.columns]
+        for r in rows_in:
+            if not isinstance(r, dict):
+                continue
+            cells = {c: str(r.get(c, "")) for c in cols}
+            rows.append(TableRow(cells=cells, bbox=r.get("bbox", [0, 0, 0, 0]),
+                                 confidence=r.get("confidence", "low")))
+        tables.append(ExtractedTable(name=name, label=spec.label, columns=cols, rows=rows))
+
+    additional = []
+    for e in extras:
+        if isinstance(e, dict) and e.get("value"):
+            additional.append(ExtractedField(
+                key="extra:" + str(e.get("label", "")).strip().lower().replace(" ", "_"),
+                label=str(e.get("label", "")), value=e.get("value", ""),
+                confidence=e.get("confidence", "low"), bbox=e.get("bbox", [0, 0, 0, 0]),
+            ))
+
+    return Extraction(
+        domain=pack.name, fields=fields, tables=tables, additional_fields=additional,
+        overall_confidence=obj.get("overall_confidence", "low"),
+    )
+
+
+def extract(image_b64: str, pack: DomainPack, model: Optional[str] = None) -> Extraction:
     model = model or DEFAULT_MODEL
-    raw = _call_vision(image_b64, model)
-    obj = _recover_json(raw)
+    raw = _call(image_b64, model, _system_prompt(pack), f"Extract this {pack.label} into the schema JSON.")
+    return _parse(_recover_json(raw), pack)
+
+
+def classify(image_b64: str, candidates: list[str]) -> str:
+    """Ask the cheap model which domain this document is. Returns a pack name."""
+    system = (
+        "You classify a document image into exactly one category. Reply with ONLY the "
+        "category name, nothing else. Categories: " + ", ".join(candidates) + "."
+    )
     try:
-        return Extraction.model_validate(obj)
-    except Exception as e:  # pydantic ValidationError and friends
-        raise ExtractionError(f"Schema validation failed: {e}") from e
+        raw = _call(image_b64, DEFAULT_MODEL, system, "Which category is this document?")
+    except ExtractionError:
+        return "generic"
+    guess = re.sub(r"[^a-z_]", "", (raw or "").strip().lower().replace(" ", "_"))
+    for c in candidates:
+        if c in guess:
+            return c
+    return "generic"
+
+
+def embed_text(text: str) -> Optional[list]:
+    """Local embedding for similarity (resume↔JD). Returns None if unavailable."""
+    from dedup import embed  # lazy: heavy deps guarded there
+    return embed(text)
