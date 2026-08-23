@@ -1,7 +1,7 @@
 "use client";
 
-import { ScanLine } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Activity, FileText, ScanLine, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import AnomalyPanel from "../components/review/AnomalyPanel";
 import ApproveBar from "../components/review/ApproveBar";
 import BadgeBar from "../components/review/BadgeBar";
@@ -13,33 +13,48 @@ import Uploader from "../components/review/Uploader";
 import ValidationPanel from "../components/review/ValidationPanel";
 import { useProcess } from "../context/ProcessContext";
 
+type TabId = "fields" | "checks" | "integrity" | "signals";
+
 export default function ReviewPage() {
   const { resp, extraction, error, processing, activeKey, setActiveKey, editField } =
     useProcess();
-  const [reviewed, setReviewed] = useState(false);
-  const gateRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<TabId>("fields");
+  const [visited, setVisited] = useState<Set<TabId>>(new Set(["fields"]));
 
+  const hasSignals = !!(resp?.similarity || resp?.anomaly);
+
+  // Counts for the tab badges.
+  const failCount = resp?.validation.checks.filter((c) => !c.passed).length ?? 0;
+  const flagCount = useMemo(() => {
+    const flags = (resp?.integrity as any)?.flags ?? [];
+    return flags.filter((f: any) => f.severity && f.severity !== "info").length;
+  }, [resp]);
+
+  // Reset when a new document is processed.
   useEffect(() => {
     if (!resp) return;
-    setReviewed(false);
-    const node = gateRef.current;
-    if (!node) return;
-    const io = new IntersectionObserver(
-      (entries) => entries.some((e) => e.isIntersecting) && setReviewed(true),
-      { threshold: 0.4 }
-    );
-    io.observe(node);
-    return () => io.disconnect();
+    setTab("fields");
+    setVisited(new Set(["fields"]));
   }, [resp]);
+
+  const go = (id: TabId) => {
+    setTab(id);
+    setVisited((v) => new Set(v).add(id));
+  };
+
+  const reviewed = visited.has("checks") && visited.has("integrity");
+
+  const TABS: { id: TabId; label: string; icon: typeof FileText; badge?: number; tone?: string }[] = [
+    { id: "fields", label: "Fields", icon: FileText },
+    { id: "checks", label: "Checks", icon: ShieldCheck, badge: failCount, tone: failCount ? "red" : "green" },
+    { id: "integrity", label: "Integrity", icon: ScanLine, badge: flagCount, tone: flagCount ? "red" : "green" },
+    ...(hasSignals ? [{ id: "signals" as TabId, label: "Signals", icon: Activity, tone: "violet" }] : []),
+  ];
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_1fr]">
       <div className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <Uploader />
-          </div>
-        </div>
+        <Uploader />
         {resp && extraction && (
           <>
             <BadgeBar resp={resp} />
@@ -53,7 +68,7 @@ export default function ReviewPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         {error && (
           <div className="rounded-xl border border-red/50 bg-red/10 px-4 py-3 text-sm text-red">
             {error}
@@ -80,24 +95,70 @@ export default function ReviewPage() {
 
         {resp && extraction && (
           <>
-            <FieldReview
-              extraction={extraction}
-              activeKey={activeKey}
-              onHover={setActiveKey}
-              onEdit={editField}
-            />
-            {resp.similarity && <SimilarityPanel similarity={resp.similarity} />}
-            {resp.anomaly && <AnomalyPanel anomaly={resp.anomaly} />}
-            <ValidationPanel validation={resp.validation} />
-            <div ref={gateRef}>
+            {/* Segmented tab bar */}
+            <div className="flex gap-1 rounded-xl border border-line/20 bg-inset/50 p-1">
+              {TABS.map((t) => {
+                const Icon = t.icon;
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => go(t.id)}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
+                      active ? "bg-violet/20 text-text shadow-sm" : "text-muted hover:text-text"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {t.label}
+                    {t.badge !== undefined && t.badge > 0 && (
+                      <span className={`rounded-full px-1.5 text-[10px] ${
+                        t.tone === "red" ? "bg-red/20 text-red" : "bg-green/20 text-green"
+                      }`}>
+                        {t.badge}
+                      </span>
+                    )}
+                    {t.id === "integrity" && t.badge === 0 && (
+                      <span className="rounded-full bg-green/20 px-1.5 text-[10px] text-green">✓</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab body */}
+            {tab === "fields" && (
+              <FieldReview
+                extraction={extraction}
+                activeKey={activeKey}
+                onHover={setActiveKey}
+                onEdit={editField}
+              />
+            )}
+            {tab === "checks" && <ValidationPanel validation={resp.validation} />}
+            {tab === "integrity" && (
               <IntegrityPanel
                 integrity={resp.integrity}
                 label={resp.integrity_label}
                 domain={resp.domain}
                 extraction={extraction}
               />
-            </div>
+            )}
+            {tab === "signals" && (
+              <div className="flex flex-col gap-4">
+                {resp.similarity && <SimilarityPanel similarity={resp.similarity} />}
+                {resp.anomaly && <AnomalyPanel anomaly={resp.anomaly} />}
+                {!resp.similarity && !resp.anomaly && (
+                  <div className="panel text-sm text-muted">No ML signals for this document.</div>
+                )}
+              </div>
+            )}
+
             <ApproveBar reviewed={reviewed} />
+            {!reviewed && (
+              <p className="-mt-1 text-center text-[11px] text-muted">
+                Open the <b>Checks</b> and <b>Integrity</b> tabs to enable approval.
+              </p>
+            )}
           </>
         )}
       </div>
