@@ -1,3 +1,25 @@
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  account_type: "trial" | "paid" | "enterprise_admin" | "enterprise_member";
+  org_id: number | null;
+}
+
+export interface Billing {
+  account_type: string;
+  trial_credits: number;
+  domain_credits: Record<string, number>;
+  org: { name: string; pooled_credits: number } | null;
+  cost_per_doc: number;
+}
+
+export interface AuthPayload {
+  token: string;
+  user: AuthUser;
+  billing: Billing;
+}
+
 export type Confidence = "high" | "medium" | "low";
 export type BBox = [number, number, number, number];
 export type Severity = "high" | "medium" | "low" | "info";

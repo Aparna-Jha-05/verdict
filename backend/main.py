@@ -14,10 +14,12 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import accounts
+import auth
 import dedup
 import store
 from extract import classify
@@ -42,6 +44,7 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     store.init_db()
+    accounts.init_accounts()
     if os.environ.get("AUTO_SEED", "1") != "0":
         import seed
         if seed.seed_if_empty():
@@ -58,11 +61,123 @@ def domains_endpoint() -> dict:
     return {"domains": [d.model_dump() for d in all_domains()]}
 
 
+# ------------------------- accounts / billing -------------------------
+
+def _public(user: dict) -> dict:
+    return {"id": user["id"], "email": user["email"], "name": user["name"],
+            "account_type": user["account_type"], "org_id": user.get("org_id")}
+
+
+def _auth_payload(user: dict) -> dict:
+    return {"token": auth.make_token(user["id"]), "user": _public(user),
+            "billing": accounts.balances(user)}
+
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/auth/signup")
+def signup(req: SignupRequest) -> dict:
+    """Create an account and start a free trial (credits usable on any domain)."""
+    try:
+        user = accounts.create_user(req.email, req.password, req.name,
+                                    account_type="trial", trial_credits=accounts.TRIAL_CREDITS)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return _auth_payload(user)
+
+
+@app.post("/auth/guest")
+def guest() -> dict:
+    """One-click instant free trial — provisions a throwaway trial account."""
+    import secrets as _s
+    email = f"guest-{_s.token_hex(4)}@verdict.trial"
+    user = accounts.create_user(email, _s.token_urlsafe(12), "Guest (trial)",
+                                account_type="trial", trial_credits=accounts.TRIAL_CREDITS)
+    return _auth_payload(user)
+
+
+@app.post("/auth/login")
+def login(req: LoginRequest) -> dict:
+    user = accounts.authenticate(req.email, req.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    return _auth_payload(user)
+
+
+@app.get("/auth/me")
+def me(user: dict = Depends(auth.current_user)) -> dict:
+    return {"user": _public(user), "billing": accounts.balances(user)}
+
+
+@app.get("/billing")
+def billing(user: dict = Depends(auth.current_user)) -> dict:
+    return accounts.balances(user)
+
+
+class PurchaseRequest(BaseModel):
+    domain: str
+    credits: float = 100
+
+
+@app.post("/billing/purchase")
+def purchase(req: PurchaseRequest, user: dict = Depends(auth.current_user)) -> dict:
+    """Mock purchase of per-domain credits — buy only the domain you need."""
+    if req.credits <= 0:
+        raise HTTPException(status_code=400, detail="Credit amount must be positive.")
+    return accounts.purchase(user, req.domain, req.credits)
+
+
+class OrgSignupRequest(BaseModel):
+    org_name: str
+    admin_email: str
+    admin_password: str
+    admin_name: str = ""
+
+
+@app.post("/org/signup")
+def org_signup(req: OrgSignupRequest) -> dict:
+    """Create an enterprise organization with a shared credit pool + an admin."""
+    try:
+        res = accounts.create_org(req.org_name, req.admin_email, req.admin_password, req.admin_name)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return _auth_payload(res["admin"])
+
+
+class Member(BaseModel):
+    email: str
+    name: str = ""
+    password: str = ""
+
+
+class MembersRequest(BaseModel):
+    members: list[Member]
+
+
+@app.post("/org/members")
+def org_members(req: MembersRequest, user: dict = Depends(auth.current_user)) -> dict:
+    """Bulk-provision member accounts under the admin's org (enterprise)."""
+    if user["account_type"] != "enterprise_admin" or not user.get("org_id"):
+        raise HTTPException(status_code=403, detail="Only an enterprise admin can add members.")
+    created = accounts.add_members(user["org_id"], [m.model_dump() for m in req.members])
+    return {"created": created}
+
+
 @app.post("/process", response_model=ProcessResponse)
 async def process_endpoint(
     file: UploadFile = File(...),
     domain: str = Form("auto"),
     second_input: str = Form(""),
+    user: dict = Depends(auth.current_user),
 ) -> ProcessResponse:
     data = await file.read()
     if not data:
@@ -77,9 +192,19 @@ async def process_endpoint(
         domain = classify(ing["page_image_b64"], candidates)
     pack = get_pack(domain)
 
+    # Gate on credits (free-trial pool, per-domain credits, or org pool).
+    if not accounts.can_afford(user, pack.name):
+        raise HTTPException(
+            status_code=402,
+            detail=f"Out of credits for {pack.label}. Buy {pack.label} credits to continue.",
+        )
+
     result = route_process(ing["page_image_b64"], pack, ing["pdf_metadata"], second_input or None)
     if result.error:
         raise HTTPException(status_code=502, detail=result.error)
+
+    # Only charge once extraction actually succeeded.
+    accounts.charge(user, pack.name)
 
     ext = result.extraction
     ref = _ref(ext, pack)
@@ -120,7 +245,7 @@ class ApproveRequest(BaseModel):
 
 
 @app.post("/approve")
-def approve_endpoint(req: ApproveRequest) -> dict:
+def approve_endpoint(req: ApproveRequest, user: dict = Depends(auth.current_user)) -> dict:
     pack = get_pack(req.domain)
     ext = req.extraction
     ref = _ref(ext, pack)

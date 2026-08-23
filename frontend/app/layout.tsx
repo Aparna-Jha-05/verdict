@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AppShell from "./components/shell/AppShell";
+import AppFrame from "./components/shell/AppFrame";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -20,7 +20,7 @@ export default function RootLayout({
         <div className="cosmic-bg" aria-hidden />
         <div className="cosmic-glow" aria-hidden />
         <Providers>
-          <AppShell>{children}</AppShell>
+          <AppFrame>{children}</AppFrame>
         </Providers>
       </body>
     </html>

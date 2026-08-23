@@ -19,6 +19,7 @@ import type {
   Extraction,
   ProcessResponse,
 } from "../lib/types";
+import { useAuth } from "./AuthContext";
 
 interface ProcessState {
   domains: DomainInfo[];
@@ -51,6 +52,7 @@ const Ctx = createContext<ProcessState | null>(null);
 
 export function ProcessProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { refreshBilling } = useAuth();
   const [domains, setDomains] = useState<DomainInfo[]>([]);
   const [selectedDomain, setSelectedDomain] = useState("auto");
   const [secondInput, setSecondInput] = useState("");
@@ -113,13 +115,14 @@ export function ProcessProvider({ children }: { children: React.ReactNode }) {
         setResp(r);
         setExtraction(r.extraction);
         setBump((b) => b + 1);
+        refreshBilling();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
       } finally {
         setProcessing(false);
       }
     },
-    [router, selectedDomain, secondInput]
+    [router, selectedDomain, secondInput, refreshBilling]
   );
 
   const editField = useCallback((key: string, value: string) => {

@@ -57,6 +57,11 @@ export default function ReviewPage() {
         {error && (
           <div className="rounded-xl border border-red/50 bg-red/10 px-4 py-3 text-sm text-red">
             {error}
+            {/credits/i.test(error) && (
+              <a href="/billing" className="ml-2 font-semibold underline">
+                Go to Billing →
+              </a>
+            )}
           </div>
         )}
 

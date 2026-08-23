@@ -2,6 +2,7 @@
 
 import {
   ClipboardList,
+  CreditCard,
   LayoutDashboard,
   ScrollText,
   Sparkles,
@@ -17,6 +18,7 @@ const LINKS = [
   { href: "/review", label: "Review", icon: ScanLine },
   { href: "/ledger", label: "Ledger", icon: ScrollText },
   { href: "/audit", label: "Audit", icon: ClipboardList },
+  { href: "/billing", label: "Billing", icon: CreditCard },
 ];
 
 export default function Sidebar({
