@@ -34,6 +34,8 @@ CHAT_ROUTE = os.environ.get("AIPIPE_CHAT_ROUTE", _DEFAULT_ROUTE)
 DEFAULT_MODEL = os.environ.get("AIPIPE_VISION_MODEL", "openai/gpt-4o-mini")
 ESCALATION_MODEL = os.environ.get("AIPIPE_ESCALATION_MODEL", "openai/gpt-4o")
 _TIMEOUT = float(os.environ.get("AIPIPE_TIMEOUT", "90"))
+# Enough for a full invoice/resume JSON; overridable. Lower = cheaper per call.
+_MAX_TOKENS = int(os.environ.get("VISION_MAX_TOKENS", "2048"))
 
 
 class ExtractionError(Exception):
@@ -124,6 +126,9 @@ def _call(image_b64: str, model: str, system: str, user: str) -> str:
     payload = {
         "model": model,
         "temperature": 0.1,
+        # Cap output tokens so we don't implicitly request the model's default
+        # (often 16k), which inflates the credit a provider reserves per call.
+        "max_tokens": _MAX_TOKENS,
         "messages": [
             {"role": "system", "content": system},
             {
