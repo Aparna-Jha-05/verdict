@@ -165,6 +165,20 @@ class SimilarityResult(BaseModel):
     label: str  # e.g. "Resume ↔ Job description match"
     verdict: str  # human-readable band, deterministic threshold
     detail: str = ""
+    # Optional skill-level breakdown (résumé↔JD)
+    coverage: Optional[float] = None  # fraction of JD skills the candidate has
+    matched: List[str] = Field(default_factory=list)
+    missing: List[str] = Field(default_factory=list)
+
+
+class AnomalyResult(BaseModel):
+    """Unsupervised outlier signal over historical records. A signal for the
+    human, never an auto-decision."""
+
+    score: float  # 0..1, higher = more unusual
+    level: str  # normal | elevated | high | learning
+    reason: str
+    features: List[dict] = Field(default_factory=list)
 
 
 class DomainInfo(BaseModel):
@@ -185,6 +199,7 @@ class ProcessResponse(BaseModel):
     validation: ValidationResult
     integrity: IntegrityResult
     similarity: Optional[SimilarityResult] = None
+    anomaly: Optional[AnomalyResult] = None
     model_used: str
     escalated: bool
     page_image_b64: str

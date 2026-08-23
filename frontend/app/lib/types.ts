@@ -59,6 +59,16 @@ export interface SimilarityResult {
   label: string;
   verdict: string;
   detail: string;
+  coverage: number | null;
+  matched: string[];
+  missing: string[];
+}
+
+export interface AnomalyResult {
+  score: number;
+  level: "normal" | "elevated" | "high" | "learning";
+  reason: string;
+  features: { name: string; detail: string }[];
 }
 
 export interface DomainInfo {
@@ -79,6 +89,7 @@ export interface ProcessResponse {
   validation: ValidationResult;
   integrity: IntegrityResult;
   similarity: SimilarityResult | null;
+  anomaly: AnomalyResult | null;
   model_used: string;
   escalated: boolean;
   page_image_b64: string;

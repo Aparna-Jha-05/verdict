@@ -38,8 +38,36 @@ export default function SimilarityPanel({ similarity }: { similarity: Similarity
             <div className={`h-full ${barColor}`} style={{ width: `${pct}%` }} />
           </div>
           <p className="mt-2 text-xs text-muted">{similarity.detail}</p>
-          <p className="mt-1 text-[11px] text-muted/70">
-            Deterministic cosine over local embeddings — the model never scores the match.
+
+          {similarity.coverage !== null && (
+            <div className="mt-3 border-t border-line/15 pt-3">
+              <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-wide text-muted">
+                <span>Skill coverage</span>
+                <span className="font-mono text-text">{Math.round(similarity.coverage * 100)}% of role skills</span>
+              </div>
+              {similarity.matched.length > 0 && (
+                <div className="mb-1.5 flex flex-wrap gap-1.5">
+                  {similarity.matched.map((s) => (
+                    <span key={s} className="rounded-md bg-green/15 px-2 py-0.5 text-[11px] capitalize text-green">
+                      ✓ {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {similarity.missing.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {similarity.missing.map((s) => (
+                    <span key={s} className="rounded-md bg-red/12 px-2 py-0.5 text-[11px] capitalize text-red">
+                      ✕ {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <p className="mt-2 text-[11px] text-muted/70">
+            Semantic + skill-level matching (embeddings) — a signal for the recruiter, not an auto-decision.
           </p>
         </>
       )}

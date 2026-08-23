@@ -2,6 +2,7 @@
 
 import { ScanLine } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import AnomalyPanel from "../components/review/AnomalyPanel";
 import ApproveBar from "../components/review/ApproveBar";
 import BadgeBar from "../components/review/BadgeBar";
 import DocViewer from "../components/review/DocViewer";
@@ -81,6 +82,7 @@ export default function ReviewPage() {
               onEdit={editField}
             />
             {resp.similarity && <SimilarityPanel similarity={resp.similarity} />}
+            {resp.anomaly && <AnomalyPanel anomaly={resp.anomaly} />}
             <ValidationPanel validation={resp.validation} />
             <div ref={gateRef}>
               <IntegrityPanel

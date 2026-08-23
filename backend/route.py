@@ -11,11 +11,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+import anomaly
 import dedup
+import skills
 import store
 from extract import DEFAULT_MODEL, ESCALATION_MODEL, ExtractionError, extract
 from packs.base import DomainPack, run_integrity, run_validation, semantic_signature
 from schema import (
+    AnomalyResult,
     Extraction,
     IntegrityResult,
     SimilarityResult,
@@ -29,6 +32,7 @@ class RouteResult:
     validation: ValidationResult
     integrity: IntegrityResult
     similarity: Optional[SimilarityResult]
+    anomaly: Optional[AnomalyResult]
     model_used: str
     escalated: bool
     error: Optional[str] = None
@@ -66,8 +70,14 @@ def _similarity(ext: Extraction, pack: DomainPack, second_input: Optional[str]) 
         verdict = "Moderate match"
     else:
         verdict = "Weak match"
-    return SimilarityResult(score=round(score, 3), label=spec.label, verdict=verdict,
-                            detail=f"{score:.0%} similarity to the {spec.second_input_label.lower()} (via {method}).")
+    result = SimilarityResult(score=round(score, 3), label=spec.label, verdict=verdict,
+                              detail=f"{score:.0%} similarity to the {spec.second_input_label.lower()} (via {method}).")
+    if spec.skill_match:
+        sm = skills.skill_match(cand, second_input)
+        result.coverage = sm["coverage"]
+        result.matched = sm["matched"]
+        result.missing = sm["missing"]
+    return result
 
 
 def process(image_b64: str, pack: DomainPack, pdf_metadata: Optional[dict],
@@ -97,7 +107,7 @@ def process(image_b64: str, pack: DomainPack, pdf_metadata: Optional[dict],
                     extraction=Extraction(domain=pack.name),
                     validation=ValidationResult(passed=False, checks=[]),
                     integrity=IntegrityResult(passed=False, flags=[]),
-                    similarity=None, model_used=ESCALATION_MODEL, escalated=True,
+                    similarity=None, anomaly=None, model_used=ESCALATION_MODEL, escalated=True,
                     error=f"Both extraction passes failed: {e}",
                 )
 
@@ -106,12 +116,14 @@ def process(image_b64: str, pack: DomainPack, pdf_metadata: Optional[dict],
             extraction=Extraction(domain=pack.name),
             validation=ValidationResult(passed=False, checks=[]),
             integrity=IntegrityResult(passed=False, flags=[]),
-            similarity=None, model_used=model_used, escalated=escalated,
+            similarity=None, anomaly=None, model_used=model_used, escalated=escalated,
             error="Extraction failed and could not be recovered.",
         )
 
     integrity = run_integrity(ext, pack, pdf_metadata, store, dedup)
     similarity = _similarity(ext, pack, second_input)
+    anomaly_signal = anomaly.score(ext, pack, store)
 
     return RouteResult(extraction=ext, validation=val, integrity=integrity,
-                       similarity=similarity, model_used=model_used, escalated=escalated)
+                       similarity=similarity, anomaly=anomaly_signal,
+                       model_used=model_used, escalated=escalated)

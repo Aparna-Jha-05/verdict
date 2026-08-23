@@ -79,6 +79,8 @@ class SimilaritySpec:
     # which extraction fields form the candidate signature text
     signature_fields: List[str] = dc_field(default_factory=list)
     signature_tables: List[str] = dc_field(default_factory=list)
+    # compute a skill-level breakdown (résumé↔JD) in addition to overall score
+    skill_match: bool = False
 
 
 @dataclass

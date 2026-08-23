@@ -98,11 +98,17 @@ async def process_endpoint(
     for f in actionable:
         store.log_activity("flagged", domain=pack.name, ref=ref, party=party,
                            summary=f.reason, severity=f.severity, meta={"check": f.check})
+    if result.anomaly and result.anomaly.level in ("elevated", "high"):
+        store.log_activity("flagged", domain=pack.name, ref=ref, party=party,
+                           summary=result.anomaly.reason,
+                           severity="high" if result.anomaly.level == "high" else "medium",
+                           meta={"check": "anomaly", "score": result.anomaly.score})
 
     return ProcessResponse(
         domain=pack.name, domain_label=pack.label, integrity_label=pack.integrity_label,
         extraction=ext, validation=result.validation, integrity=result.integrity,
-        similarity=result.similarity, model_used=result.model_used, escalated=result.escalated,
+        similarity=result.similarity, anomaly=result.anomaly,
+        model_used=result.model_used, escalated=result.escalated,
         page_image_b64=ing["page_image_b64"], source_type=ing["source_type"],
     )
 

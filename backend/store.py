@@ -82,6 +82,22 @@ def identity_exists(domain: str, identity: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
+def amounts(domain: str, party: str = "") -> list[float]:
+    """Historical approved amounts for a domain (optionally one party). Feeds
+    the anomaly detector."""
+    with _conn() as conn:
+        if party:
+            rows = conn.execute(
+                "SELECT amount FROM records WHERE domain=? AND lower(trim(party))=? AND amount IS NOT NULL",
+                (domain, _norm(party)),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT amount FROM records WHERE domain=? AND amount IS NOT NULL", (domain,)
+            ).fetchall()
+    return [float(r["amount"]) for r in rows]
+
+
 def add_record(record: dict) -> int:
     with _conn() as conn:
         cur = conn.execute(

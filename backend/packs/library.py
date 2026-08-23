@@ -163,6 +163,7 @@ RESUME = DomainPack(
         label="Résumé ↔ Job description match",
         signature_fields=["current_title", "skills", "summary", "education"],
         signature_tables=["experience"],
+        skill_match=True,
     ),
 )
 
