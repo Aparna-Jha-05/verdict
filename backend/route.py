@@ -53,18 +53,21 @@ def _similarity(ext: Extraction, pack: DomainPack, second_input: Optional[str]) 
     cand = semantic_signature(ext, pack)
     a = dedup.embed(cand)
     b = dedup.embed(second_input)
-    if a is None or b is None:
-        return SimilarityResult(score=0.0, label=spec.label, verdict="unavailable",
-                                detail="Local embedding model not installed in this environment.")
-    score = max(0.0, min(1.0, dedup.cosine(a, b)))
-    if score >= spec.strong:
+    if a is not None and b is not None:
+        score = max(0.0, min(1.0, dedup.cosine(a, b)))
+        strong, moderate, method = spec.strong, spec.moderate, "semantic embeddings"
+    else:
+        # Free-tier fallback: pure-Python lexical cosine (term overlap).
+        score = dedup.lexical_cosine(cand, second_input)
+        strong, moderate, method = 0.40, 0.22, "keyword overlap"
+    if score >= strong:
         verdict = "Strong match"
-    elif score >= spec.moderate:
+    elif score >= moderate:
         verdict = "Moderate match"
     else:
         verdict = "Weak match"
     return SimilarityResult(score=round(score, 3), label=spec.label, verdict=verdict,
-                            detail=f"Cosine similarity {score:.2f} against the {spec.second_input_label.lower()}.")
+                            detail=f"{score:.0%} similarity to the {spec.second_input_label.lower()} (via {method}).")
 
 
 def process(image_b64: str, pack: DomainPack, pdf_metadata: Optional[dict],

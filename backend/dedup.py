@@ -52,6 +52,31 @@ def cosine(a: list, b: list) -> float:
     return sum(x * y for x, y in zip(a, b))  # both normalized
 
 
+# Pure-Python lexical fallback (no deps) so similarity works on the free tier
+# even without the embedding model. Deterministic term-frequency cosine.
+import math
+import re
+from collections import Counter
+
+_STOP = {"the", "a", "an", "and", "or", "of", "to", "in", "for", "with", "on",
+         "you", "we", "our", "will", "is", "are", "be", "as", "at", "by"}
+
+
+def _tokens(s: str) -> list:
+    return [t for t in re.findall(r"[a-z0-9+#.]+", (s or "").lower()) if t not in _STOP and len(t) > 1]
+
+
+def lexical_cosine(a: str, b: str) -> float:
+    ca, cb = Counter(_tokens(a)), Counter(_tokens(b))
+    if not ca or not cb:
+        return 0.0
+    common = set(ca) & set(cb)
+    dot = sum(ca[t] * cb[t] for t in common)
+    na = math.sqrt(sum(v * v for v in ca.values()))
+    nb = math.sqrt(sum(v * v for v in cb.values()))
+    return dot / (na * nb) if na and nb else 0.0
+
+
 def check_duplicate(ext: Extraction, pack: DomainPack) -> Optional[Flag]:
     if not _ensure():
         return Flag(check="semantic_duplicate", severity="info",

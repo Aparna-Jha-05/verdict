@@ -4,12 +4,22 @@ import { UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 import { useProcess } from "../../context/ProcessContext";
 
-const SAMPLES: { label: string; file: string }[] = [
-  { label: "Clean invoice", file: "clean.pdf" },
-  { label: "Phone photo", file: "photo_scan.jpg" },
-  { label: "Wrong total", file: "wrong_total.pdf" },
-  { label: "Changed bank", file: "changed_bank.pdf" },
-  { label: "Near-duplicate", file: "near_duplicate.pdf" },
+const SAMPLE_JD =
+  "We are hiring a Senior Data Scientist to build and deploy machine learning " +
+  "systems in Python. Requirements: strong experience with PyTorch or TensorFlow, " +
+  "NLP and large language models, SQL, and production MLOps on AWS with Docker. " +
+  "You will lead model development and ship models to production at scale.";
+
+type Sample = { label: string; file: string; domain?: string; jd?: string };
+
+const SAMPLES: Sample[] = [
+  { label: "Clean invoice", file: "clean.pdf", domain: "invoice" },
+  { label: "Phone photo", file: "photo_scan.jpg", domain: "invoice" },
+  { label: "Wrong total", file: "wrong_total.pdf", domain: "invoice" },
+  { label: "Changed bank", file: "changed_bank.pdf", domain: "invoice" },
+  { label: "Near-duplicate", file: "near_duplicate.pdf", domain: "invoice" },
+  { label: "Résumé ↔ JD", file: "resume.pdf", domain: "resume", jd: SAMPLE_JD },
+  { label: "Receipt", file: "receipt.pdf", domain: "receipt" },
 ];
 
 async function loadSample(name: string): Promise<File> {
@@ -103,14 +113,19 @@ export default function Uploader({ navigate = false }: { navigate?: boolean }) {
 
       <div className="mt-3">
         <div className="mb-1.5 text-[10px] uppercase tracking-wide text-muted">
-          Invoice demo samples
+          Demo samples
         </div>
         <div className="flex flex-wrap gap-2">
           {SAMPLES.map((s) => (
             <button
               key={s.file}
               disabled={processing}
-              onClick={async () => processFile(await loadSample(s.file), navigate)}
+              onClick={async () =>
+                processFile(await loadSample(s.file), navigate, {
+                  domain: s.domain,
+                  secondInput: s.jd,
+                })
+              }
               className="chip"
             >
               {s.label}

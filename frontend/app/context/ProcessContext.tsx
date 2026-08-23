@@ -35,7 +35,11 @@ interface ProcessState {
   approved: ApproveResponse | null;
   activeKey: string | null;
 
-  processFile: (file: File, navigate?: boolean) => Promise<void>;
+  processFile: (
+    file: File,
+    navigate?: boolean,
+    opts?: { domain?: string; secondInput?: string }
+  ) => Promise<void>;
   editField: (key: string, value: string) => void;
   approve: () => Promise<void>;
   setActiveKey: (k: string | null) => void;
@@ -87,7 +91,15 @@ export function ProcessProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const processFile = useCallback(
-    async (file: File, navigate = true) => {
+    async (
+      file: File,
+      navigate = true,
+      opts?: { domain?: string; secondInput?: string }
+    ) => {
+      const domain = opts?.domain ?? selectedDomain;
+      const second = opts?.secondInput ?? secondInput;
+      if (opts?.domain) setSelectedDomain(opts.domain);
+      if (opts?.secondInput !== undefined) setSecondInput(opts.secondInput);
       setProcessing(true);
       setError(null);
       setResp(null);
@@ -97,7 +109,7 @@ export function ProcessProvider({ children }: { children: React.ReactNode }) {
       setFileName(file.name);
       if (navigate) router.push("/review");
       try {
-        const r = await processDocument(file, selectedDomain, secondInput);
+        const r = await processDocument(file, domain, second);
         setResp(r);
         setExtraction(r.extraction);
         setBump((b) => b + 1);
