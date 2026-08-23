@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useProcess } from "../../context/ProcessContext";
 
 export default function ApproveBar({ reviewed }: { reviewed: boolean }) {
-  const { extraction, approve, approved } = useProcess();
+  const { resp, approve, approved } = useProcess();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,10 +27,17 @@ export default function ApproveBar({ reviewed }: { reviewed: boolean }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `invoice_${extraction?.invoice_number.value || "export"}.csv`;
+    a.download = `verdict_${resp?.domain || "record"}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const actionVerb =
+    resp?.domain === "invoice"
+      ? "Approve → queue for payment"
+      : resp?.domain === "resume"
+      ? "Approve → shortlist"
+      : "Approve & log";
 
   if (approved) {
     return (
@@ -41,7 +48,7 @@ export default function ApproveBar({ reviewed }: { reviewed: boolean }) {
         </div>
         <p className="mt-2 text-sm">{approved.mock_action.message}</p>
         <p className="mt-1 text-sm text-muted">
-          Ledger id #{approved.ledger_id}. This invoice now blocks future duplicates.
+          Ledger id #{approved.ledger_id}. This record now blocks future duplicates.
         </p>
         <button onClick={downloadCsv} className="btn btn-ghost mt-3 text-xs">
           <Download className="h-3.5 w-3.5" /> Download CSV row
@@ -55,15 +62,11 @@ export default function ApproveBar({ reviewed }: { reviewed: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted">
           {reviewed
-            ? "You've reviewed validation and fraud. Ready to approve."
-            : "Review the validation and fraud panels before approving."}
+            ? "You've reviewed validation and integrity. Ready to approve."
+            : "Review the validation and integrity panels before approving."}
         </p>
-        <button
-          onClick={doApprove}
-          disabled={!reviewed || busy}
-          className="btn btn-primary"
-        >
-          {busy ? "Approving…" : "Approve → queue for payment"}
+        <button onClick={doApprove} disabled={!reviewed || busy} className="btn btn-primary">
+          {busy ? "Approving…" : actionVerb}
         </button>
       </div>
       {error && (

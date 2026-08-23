@@ -1,12 +1,12 @@
 "use client";
 
 import { ShieldAlert, ShieldCheck } from "lucide-react";
-import type { Extraction, FraudResult } from "../../lib/types";
-import VendorQueryDraft from "./VendorQueryDraft";
+import type { Extraction, IntegrityResult } from "../../lib/types";
+import QueryDraft from "./QueryDraft";
 
 const CHECK_LABELS: Record<string, string> = {
-  pdf_metadata: "PDF metadata forensics",
-  bank_detail_change: "Vendor bank-detail change",
+  pdf_metadata: "Document metadata forensics",
+  account_change: "Sensitive detail change",
   exact_duplicate: "Exact duplicate",
   semantic_duplicate: "Semantic near-duplicate",
 };
@@ -18,16 +18,20 @@ const SEV_CLS: Record<string, string> = {
   info: "border-l-muted bg-white/[0.03]",
 };
 
-export default function FraudPanel({
-  fraud,
+export default function IntegrityPanel({
+  integrity,
+  label,
+  domain,
   extraction,
 }: {
-  fraud: FraudResult;
+  integrity: IntegrityResult;
+  label: string;
+  domain: string;
   extraction: Extraction;
 }) {
-  const actionable = fraud.flags.filter((f) => f.severity !== "info");
+  const actionable = integrity.flags.filter((f) => f.severity !== "info");
   const showDraft = actionable.some(
-    (f) => f.check === "bank_detail_change" || f.severity === "high"
+    (f) => f.check === "account_change" || f.severity === "high"
   );
 
   return (
@@ -38,7 +42,7 @@ export default function FraudPanel({
         ) : (
           <ShieldAlert className="h-4 w-4 text-red" />
         )}
-        Fraud &amp; Tamper Review
+        {label}
         <span className="font-normal normal-case tracking-normal text-muted">
           {actionable.length === 0
             ? "· no flags raised"
@@ -46,15 +50,15 @@ export default function FraudPanel({
         </span>
       </div>
 
-      {fraud.flags.length === 0 && (
+      {integrity.flags.length === 0 && (
         <p className="px-1 py-2 text-[13px] text-green">
-          No fraud signals in this pass. (Never a guarantee of authenticity — only that these
+          No integrity signals in this pass. (Never a guarantee — only that these
           deterministic checks found nothing to flag.)
         </p>
       )}
 
       <div className="space-y-2">
-        {fraud.flags.map((f, i) => (
+        {integrity.flags.map((f, i) => (
           <div key={i} className={`rounded-lg border-l-[3px] p-2.5 ${SEV_CLS[f.severity]}`}>
             <div className="flex items-center gap-2 text-[12px] font-semibold">
               {CHECK_LABELS[f.check] || f.check}
@@ -67,7 +71,7 @@ export default function FraudPanel({
         ))}
       </div>
 
-      {showDraft && <VendorQueryDraft extraction={extraction} />}
+      {showDraft && <QueryDraft domain={domain} extraction={extraction} />}
     </div>
   );
 }

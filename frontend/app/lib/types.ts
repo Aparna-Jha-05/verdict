@@ -1,32 +1,36 @@
 export type Confidence = "high" | "medium" | "low";
 export type BBox = [number, number, number, number];
+export type Severity = "high" | "medium" | "low" | "info";
 
-export interface FieldValue {
+export interface ExtractedField {
+  key: string;
+  label: string;
   value: string;
   confidence: Confidence;
   source: string;
   bbox: BBox;
+  type: string; // text | number | date | currency | email | id
+  group: string;
 }
 
-export interface LineItem {
-  description: string;
-  quantity: number;
-  unit_price: number;
-  amount: number;
-  confidence: Confidence;
+export interface TableRow {
+  cells: Record<string, string>;
   bbox: BBox;
+  confidence: Confidence;
+}
+
+export interface ExtractedTable {
+  name: string;
+  label: string;
+  columns: string[];
+  rows: TableRow[];
 }
 
 export interface Extraction {
-  invoice_number: FieldValue;
-  invoice_date: FieldValue;
-  vendor_name: FieldValue;
-  vendor_bank_account: FieldValue;
-  currency: FieldValue;
-  line_items: LineItem[];
-  subtotal: FieldValue;
-  tax: FieldValue;
-  total: FieldValue;
+  domain: string;
+  fields: ExtractedField[];
+  tables: ExtractedTable[];
+  additional_fields: ExtractedField[];
   overall_confidence: Confidence;
 }
 
@@ -35,29 +39,46 @@ export interface Check {
   passed: boolean;
   reason: string;
 }
-
 export interface ValidationResult {
   passed: boolean;
   checks: Check[];
 }
-
-export type Severity = "high" | "medium" | "low" | "info";
 
 export interface Flag {
   check: string;
   severity: Severity;
   reason: string;
 }
-
-export interface FraudResult {
+export interface IntegrityResult {
   passed: boolean;
   flags: Flag[];
 }
 
+export interface SimilarityResult {
+  score: number;
+  label: string;
+  verdict: string;
+  detail: string;
+}
+
+export interface DomainInfo {
+  name: string;
+  label: string;
+  description: string;
+  icon: string;
+  needs_second_input: boolean;
+  second_input_label: string;
+  integrity_label: string;
+}
+
 export interface ProcessResponse {
+  domain: string;
+  domain_label: string;
+  integrity_label: string;
   extraction: Extraction;
   validation: ValidationResult;
-  fraud: FraudResult;
+  integrity: IntegrityResult;
+  similarity: SimilarityResult | null;
   model_used: string;
   escalated: boolean;
   page_image_b64: string;
@@ -77,63 +98,31 @@ export interface Stats {
   escalated: number;
   escalation_rate: number;
   confidence_distribution: { high: number; medium: number; low: number };
+  by_domain: Record<string, number>;
 }
 
 export interface ActivityItem {
   id: number;
   ts: string;
   type: "processed" | "approved" | "flagged" | "escalated";
-  invoice_number: string;
-  vendor_name: string;
+  domain: string;
+  ref: string;
+  party: string;
   summary: string;
   severity: "high" | "medium" | "low" | "info" | "ok";
   meta: Record<string, unknown>;
 }
 
-export interface LedgerRow {
+export interface LedgerRecord {
   id: number;
-  invoice_number: string;
-  vendor_name: string;
-  vendor_bank_account: string;
-  invoice_date: string;
-  currency: string;
-  subtotal: number | null;
-  tax: number | null;
-  total: number | null;
+  domain: string;
+  ref: string;
+  party: string;
+  account: string;
+  identity: string;
+  amount: number | null;
+  doc_date: string;
+  fields: Record<string, string>;
   approved_at: string;
   mock_action: string;
-  line_items: LineItem[];
 }
-
-// The scalar field keys the DocViewer/FieldReview cross-highlight on.
-export type ScalarKey =
-  | "invoice_number"
-  | "invoice_date"
-  | "vendor_name"
-  | "vendor_bank_account"
-  | "currency"
-  | "subtotal"
-  | "tax"
-  | "total";
-
-export const SCALAR_KEYS: ScalarKey[] = [
-  "invoice_number",
-  "invoice_date",
-  "vendor_name",
-  "vendor_bank_account",
-  "currency",
-  "subtotal",
-  "tax",
-  "total",
-];
-
-export const FIELD_LABELS: Record<ScalarKey, string> = {
-  invoice_number: "Invoice Number",
-  invoice_date: "Invoice Date",
-  vendor_name: "Vendor",
-  vendor_bank_account: "Bank Account",
-  currency: "Currency",
-  subtotal: "Subtotal",
-  tax: "Tax",
-  total: "Total",
-};

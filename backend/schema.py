@@ -1,124 +1,141 @@
-"""Pydantic models + the extraction JSON schema.
+"""Generic, domain-agnostic extraction schema + result envelopes.
 
-Single source of truth for the shape the vision model must return and the shape
-the deterministic layers consume. Kept lenient on parsing (models are messy) but
-strict enough that downstream code can trust field names and types.
+The platform reads ANY document type. A domain pack (see packs/) declares which
+fields and tables to ask for; the model fills them in. Everything here is generic
+so the same engine serves invoices, receipts, resumes, contracts, IDs, and more.
 """
 
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
 Confidence = Literal["high", "medium", "low"]
-
-# Normalized bbox: [x0, y0, x1, y1], each 0..1, top-left origin.
-BBox = List[float]
+BBox = List[float]  # [x0, y0, x1, y1], each 0..1, top-left origin
 
 
 def _default_bbox() -> BBox:
     return [0.0, 0.0, 0.0, 0.0]
 
 
-class Field_(BaseModel):
-    """A single extracted scalar field with provenance."""
+def _coerce_conf(v) -> Confidence:
+    if not v:
+        return "low"
+    v = str(v).lower().strip()
+    return v if v in ("high", "medium", "low") else "low"
 
+
+def _coerce_bbox(v) -> BBox:
+    if not isinstance(v, (list, tuple)) or len(v) != 4:
+        return _default_bbox()
+    try:
+        return [float(x) for x in v]
+    except (TypeError, ValueError):
+        return _default_bbox()
+
+
+class ExtractedField(BaseModel):
+    """One extracted scalar with provenance. `key` is stable; `label` is display."""
+
+    key: str
+    label: str = ""
     value: str = ""
     confidence: Confidence = "low"
     source: str = ""
     bbox: BBox = Field(default_factory=_default_bbox)
+    type: str = "text"  # text | number | date | currency | email | id
+    group: str = ""  # optional UI grouping
 
     @field_validator("value", mode="before")
     @classmethod
-    def _coerce_value(cls, v):
-        if v is None:
-            return ""
-        return str(v)
+    def _v(cls, v):
+        return "" if v is None else str(v)
 
     @field_validator("confidence", mode="before")
     @classmethod
-    def _coerce_conf(cls, v):
-        if not v:
-            return "low"
-        v = str(v).lower().strip()
-        return v if v in ("high", "medium", "low") else "low"
+    def _c(cls, v):
+        return _coerce_conf(v)
 
     @field_validator("bbox", mode="before")
     @classmethod
-    def _coerce_bbox(cls, v):
-        if not isinstance(v, (list, tuple)) or len(v) != 4:
-            return _default_bbox()
-        try:
-            return [float(x) for x in v]
-        except (TypeError, ValueError):
-            return _default_bbox()
-
-
-class NumberField(Field_):
-    """Like Field_ but exposes a parsed float via .number."""
+    def _b(cls, v):
+        return _coerce_bbox(v)
 
     @property
     def number(self) -> Optional[float]:
-        return _to_float(self.value)
+        return to_float(self.value)
 
 
-class LineItem(BaseModel):
-    description: str = ""
-    quantity: float = 0.0
-    unit_price: float = 0.0
-    amount: float = 0.0
-    confidence: Confidence = "low"
+class TableRow(BaseModel):
+    cells: Dict[str, str] = Field(default_factory=dict)
     bbox: BBox = Field(default_factory=_default_bbox)
+    confidence: Confidence = "low"
 
-    @field_validator("quantity", "unit_price", "amount", mode="before")
+    @field_validator("cells", mode="before")
     @classmethod
-    def _coerce_num(cls, v):
-        f = _to_float(v)
-        return f if f is not None else 0.0
-
-    @field_validator("confidence", mode="before")
-    @classmethod
-    def _coerce_conf(cls, v):
-        if not v:
-            return "low"
-        v = str(v).lower().strip()
-        return v if v in ("high", "medium", "low") else "low"
+    def _cells(cls, v):
+        if not isinstance(v, dict):
+            return {}
+        return {str(k): ("" if val is None else str(val)) for k, val in v.items()}
 
     @field_validator("bbox", mode="before")
     @classmethod
-    def _coerce_bbox(cls, v):
-        if not isinstance(v, (list, tuple)) or len(v) != 4:
-            return _default_bbox()
-        try:
-            return [float(x) for x in v]
-        except (TypeError, ValueError):
-            return _default_bbox()
+    def _b(cls, v):
+        return _coerce_bbox(v)
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _c(cls, v):
+        return _coerce_conf(v)
+
+    def num(self, col: str) -> Optional[float]:
+        return to_float(self.cells.get(col))
+
+
+class ExtractedTable(BaseModel):
+    name: str
+    label: str = ""
+    columns: List[str] = Field(default_factory=list)
+    rows: List[TableRow] = Field(default_factory=list)
 
 
 class Extraction(BaseModel):
-    invoice_number: Field_ = Field(default_factory=Field_)
-    invoice_date: Field_ = Field(default_factory=Field_)
-    vendor_name: Field_ = Field(default_factory=Field_)
-    vendor_bank_account: Field_ = Field(default_factory=Field_)
-    currency: Field_ = Field(default_factory=Field_)
-    line_items: List[LineItem] = Field(default_factory=list)
-    subtotal: NumberField = Field(default_factory=NumberField)
-    tax: NumberField = Field(default_factory=NumberField)
-    total: NumberField = Field(default_factory=NumberField)
+    domain: str = "generic"
+    fields: List[ExtractedField] = Field(default_factory=list)
+    tables: List[ExtractedTable] = Field(default_factory=list)
+    additional_fields: List[ExtractedField] = Field(default_factory=list)
     overall_confidence: Confidence = "low"
 
     @field_validator("overall_confidence", mode="before")
     @classmethod
-    def _coerce_conf(cls, v):
-        if not v:
-            return "low"
-        v = str(v).lower().strip()
-        return v if v in ("high", "medium", "low") else "low"
+    def _c(cls, v):
+        return _coerce_conf(v)
+
+    # -- convenience accessors used by the deterministic engine --
+    def get(self, key: str) -> Optional[ExtractedField]:
+        for f in self.fields:
+            if f.key == key:
+                return f
+        return None
+
+    def value(self, key: str) -> str:
+        f = self.get(key)
+        return f.value.strip() if f else ""
+
+    def number(self, key: str) -> Optional[float]:
+        f = self.get(key)
+        return f.number if f else None
+
+    def table(self, name: str) -> Optional[ExtractedTable]:
+        for t in self.tables:
+            if t.name == name:
+                return t
+        return None
 
 
 # ---------------------------------------------------------------------------
-# Result envelopes for the deterministic layers + the /process response
+# Result envelopes
 # ---------------------------------------------------------------------------
 
 class Check(BaseModel):
@@ -138,15 +155,36 @@ class Flag(BaseModel):
     reason: str
 
 
-class FraudResult(BaseModel):
-    passed: bool  # True == no flags raised (still "flag for review", never "authentic")
+class IntegrityResult(BaseModel):
+    passed: bool
     flags: List[Flag]
 
 
+class SimilarityResult(BaseModel):
+    score: float  # 0..1
+    label: str  # e.g. "Resume ↔ Job description match"
+    verdict: str  # human-readable band, deterministic threshold
+    detail: str = ""
+
+
+class DomainInfo(BaseModel):
+    name: str
+    label: str
+    description: str
+    icon: str
+    needs_second_input: bool = False
+    second_input_label: str = ""
+    integrity_label: str = "Integrity & Risk"
+
+
 class ProcessResponse(BaseModel):
+    domain: str
+    domain_label: str
+    integrity_label: str
     extraction: Extraction
     validation: ValidationResult
-    fraud: FraudResult
+    integrity: IntegrityResult
+    similarity: Optional[SimilarityResult] = None
     model_used: str
     escalated: bool
     page_image_b64: str
@@ -154,31 +192,10 @@ class ProcessResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# The JSON schema string handed to the vision model (kept as a literal so the
-# prompt and the pydantic model can't silently drift in intent).
+# Shared numeric coercion — "$1,234.56", "1.234,56", "(50.00)"
 # ---------------------------------------------------------------------------
 
-EXTRACTION_SCHEMA_HINT = """{
-  "invoice_number": {"value":"", "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "invoice_date":   {"value":"YYYY-MM-DD", "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "vendor_name":    {"value":"", "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "vendor_bank_account": {"value":"", "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "currency":       {"value":"", "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "line_items": [
-    {"description":"", "quantity":0, "unit_price":0.0, "amount":0.0, "confidence":"high|medium|low", "bbox":[0,0,0,0]}
-  ],
-  "subtotal": {"value":0.0, "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "tax":      {"value":0.0, "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "total":    {"value":0.0, "confidence":"high|medium|low", "source":"", "bbox":[0,0,0,0]},
-  "overall_confidence": "high|medium|low"
-}"""
-
-
-# ---------------------------------------------------------------------------
-# Shared numeric coercion — invoices carry "$1,234.56", "1.234,56", "(50.00)".
-# ---------------------------------------------------------------------------
-
-def _to_float(v) -> Optional[float]:
+def to_float(v) -> Optional[float]:
     if v is None:
         return None
     if isinstance(v, (int, float)):
@@ -190,18 +207,15 @@ def _to_float(v) -> Optional[float]:
     if s.startswith("(") and s.endswith(")"):
         negative = True
         s = s[1:-1]
-    # Strip currency symbols / letters / spaces, keep digits, separators, sign.
     cleaned = "".join(ch for ch in s if ch.isdigit() or ch in ".,-")
     if not cleaned:
         return None
-    # Decide decimal separator: if both present, the last one is the decimal.
     if "," in cleaned and "." in cleaned:
         if cleaned.rfind(",") > cleaned.rfind("."):
             cleaned = cleaned.replace(".", "").replace(",", ".")
         else:
             cleaned = cleaned.replace(",", "")
     elif "," in cleaned:
-        # Ambiguous: treat comma as decimal only if it looks like one (,dd)
         parts = cleaned.split(",")
         if len(parts[-1]) == 2 and len(parts) == 2:
             cleaned = cleaned.replace(",", ".")
@@ -212,3 +226,7 @@ def _to_float(v) -> Optional[float]:
     except ValueError:
         return None
     return -f if negative else f
+
+
+# Back-compat alias (older modules imported _to_float)
+_to_float = to_float

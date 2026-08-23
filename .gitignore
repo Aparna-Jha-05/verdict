@@ -18,3 +18,7 @@ frontend/out/
 
 # test databases
 backend/_*.db
+
+# build caches
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo

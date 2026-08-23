@@ -40,7 +40,7 @@ export default function RecentActivity() {
       </div>
       {items.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted">
-          Nothing yet. Process an invoice to start the audit trail.
+          Nothing yet. Process a document to start the audit trail.
         </p>
       ) : (
         <div className="space-y-1">
@@ -52,8 +52,8 @@ export default function RecentActivity() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px]">{a.summary}</p>
                   <p className="text-[11px] text-muted">
-                    {a.vendor_name && <span>{a.vendor_name} · </span>}
-                    {a.invoice_number && <span>{a.invoice_number} · </span>}
+                    {a.domain && <span className="capitalize">{a.domain} · </span>}
+                    {a.party && <span>{a.party} · </span>}
                     {timeAgo(a.ts)}
                   </p>
                 </div>
