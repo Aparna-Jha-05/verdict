@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react";
 import DomainGallery from "./components/dashboard/DomainGallery";
 import RecentActivity from "./components/dashboard/RecentActivity";
 import SummaryRow from "./components/dashboard/SummaryRow";
+import AskBar from "./components/shell/AskBar";
 import Uploader from "./components/review/Uploader";
 import { useTour } from "./context/TourContext";
 
@@ -26,6 +27,8 @@ export default function DashboardPage() {
           <Sparkles className="h-4 w-4" /> Guided tour
         </button>
       </div>
+
+      <AskBar />
 
       <SummaryRow />
       <DomainGallery />

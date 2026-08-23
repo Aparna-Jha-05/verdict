@@ -142,6 +142,21 @@ export async function draftQuery(domain: string, extraction: Extraction): Promis
   return res.json();
 }
 
+export interface AskResponse {
+  answer: string;
+  nav?: string;
+  suggestions?: string[];
+}
+export async function askAssistant(question: string): Promise<AskResponse> {
+  const res = await fetch(`${API_BASE}/assistant`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeader() },
+    body: JSON.stringify({ question }),
+  });
+  if (!res.ok) throw new Error((await safeDetail(res)) || `Assistant failed (${res.status})`);
+  return res.json();
+}
+
 export async function getStats(): Promise<Stats> {
   const res = await fetch(`${API_BASE}/stats`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Stats failed (${res.status})`);

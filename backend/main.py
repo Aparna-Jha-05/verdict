@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import accounts
+import assistant
 import auth
 import dedup
 import store
@@ -277,6 +278,16 @@ def approve_endpoint(req: ApproveRequest, user: dict = Depends(auth.current_user
 @app.get("/log")
 def log_endpoint() -> dict:
     return {"records": store.all_records()}
+
+
+class AskRequest(BaseModel):
+    question: str
+
+
+@app.post("/assistant")
+def assistant_endpoint(req: AskRequest, user: dict = Depends(auth.current_user)) -> dict:
+    """Ask Verdict — grounded answers about your data and how the platform works."""
+    return assistant.answer(req.question, user)
 
 
 @app.get("/stats")

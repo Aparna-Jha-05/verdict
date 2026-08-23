@@ -35,7 +35,7 @@ export default function TopHeader({
   const meta = TITLES[key] || TITLES["/"];
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line/15 bg-bg/70 px-4 py-3 backdrop-blur-xl md:px-8">
+    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line/10 bg-transparent px-4 py-3 backdrop-blur-md md:px-8">
       <button
         onClick={onOpenNav}
         className="grid h-9 w-9 place-items-center rounded-lg border border-line/20 text-muted md:hidden"
