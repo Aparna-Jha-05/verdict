@@ -4,6 +4,7 @@ import {
   ClipboardList,
   CreditCard,
   LayoutDashboard,
+  LayoutGrid,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -17,6 +18,7 @@ import { useTour } from "../../context/TourContext";
 
 const LINKS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/industries", label: "Industries", icon: LayoutGrid },
   { href: "/review", label: "Review", icon: ScanLine },
   { href: "/ledger", label: "Ledger", icon: ScrollText },
   { href: "/audit", label: "Audit", icon: ClipboardList },

@@ -1,7 +1,7 @@
 "use client";
 
 import { UploadCloud } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProcess } from "../../context/ProcessContext";
 
 const SAMPLE_JD =
@@ -28,7 +28,13 @@ async function loadSample(name: string): Promise<File> {
   return new File([blob], name, { type: blob.type });
 }
 
-export default function Uploader({ navigate = false }: { navigate?: boolean }) {
+export default function Uploader({
+  navigate = false,
+  industryFilter,
+}: {
+  navigate?: boolean;
+  industryFilter?: string;
+}) {
   const {
     processFile,
     processing,
@@ -40,6 +46,23 @@ export default function Uploader({ navigate = false }: { navigate?: boolean }) {
   } = useProcess();
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
+
+  // Scope the document-type list (and samples) to the chosen industry.
+  const visibleDomains = industryFilter
+    ? domains.filter((d) => d.industry === industryFilter)
+    : domains;
+  const visibleNames = new Set(visibleDomains.map((d) => d.name));
+  const visibleSamples = industryFilter
+    ? SAMPLES.filter((s) => s.domain && visibleNames.has(s.domain))
+    : SAMPLES;
+
+  // If the selected type falls outside the industry, snap back to Auto-detect.
+  useEffect(() => {
+    if (industryFilter && selectedDomain !== "auto" && !visibleNames.has(selectedDomain)) {
+      setSelectedDomain("auto");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [industryFilter]);
 
   const active = domains.find((d) => d.name === selectedDomain);
   const needsSecond = active?.needs_second_input;
@@ -58,7 +81,7 @@ export default function Uploader({ navigate = false }: { navigate?: boolean }) {
           className="w-full rounded-lg border border-line/20 bg-inset/60 px-2.5 py-2 text-sm outline-none focus:border-violet"
         >
           <option value="auto">✨ Auto-detect</option>
-          {domains.map((d) => (
+          {visibleDomains.map((d) => (
             <option key={d.name} value={d.name}>
               {d.label}
             </option>
@@ -111,12 +134,13 @@ export default function Uploader({ navigate = false }: { navigate?: boolean }) {
         />
       </div>
 
+      {visibleSamples.length > 0 && (
       <div className="mt-3">
         <div className="mb-1.5 text-[10px] uppercase tracking-wide text-muted">
           Demo samples
         </div>
         <div className="flex flex-wrap gap-2">
-          {SAMPLES.map((s) => (
+          {visibleSamples.map((s) => (
             <button
               key={s.file}
               disabled={processing}
@@ -133,6 +157,7 @@ export default function Uploader({ navigate = false }: { navigate?: boolean }) {
           ))}
         </div>
       </div>
+      )}
 
       {processing && (
         <div className="mt-3 flex items-center gap-3 text-sm text-violet">

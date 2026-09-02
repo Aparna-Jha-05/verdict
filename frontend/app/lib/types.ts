@@ -98,9 +98,26 @@ export interface DomainInfo {
   label: string;
   description: string;
   icon: string;
+  industry: string;
   needs_second_input: boolean;
   second_input_label: string;
   integrity_label: string;
+}
+
+export interface IndustryDoc {
+  name: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+export interface Industry {
+  key: string;
+  label: string;
+  icon: string;
+  tagline: string;
+  count: number;
+  documents: IndustryDoc[];
 }
 
 export interface ProcessResponse {

@@ -70,6 +70,7 @@ def _bank_balance(ext: Extraction) -> List[Check]:
 
 INVOICE = DomainPack(
     name="invoice",
+    industry="finance",
     label="Invoice",
     description="Vendor invoices — totals, tax, line items, and bank details.",
     icon="ReceiptText",
@@ -105,6 +106,7 @@ INVOICE = DomainPack(
 
 RECEIPT = DomainPack(
     name="receipt",
+    industry="finance",
     label="Receipt",
     description="Store and expense receipts — merchant, totals, payment method.",
     icon="ShoppingBag",
@@ -134,6 +136,7 @@ RECEIPT = DomainPack(
 
 RESUME = DomainPack(
     name="resume",
+    industry="hr",
     label="Résumé",
     description="Candidate CVs — matched by meaning against a job description.",
     icon="UserRound",
@@ -169,6 +172,7 @@ RESUME = DomainPack(
 
 PURCHASE_ORDER = DomainPack(
     name="purchase_order",
+    industry="logistics",
     label="Purchase Order",
     description="POs — line items, quantities, and totals for three-way match.",
     icon="ClipboardList",
@@ -199,6 +203,7 @@ PURCHASE_ORDER = DomainPack(
 
 CONTRACT = DomainPack(
     name="contract",
+    industry="legal",
     label="Contract",
     description="Agreements — parties, term dates, value, and governing law.",
     icon="FileSignature",
@@ -221,6 +226,7 @@ CONTRACT = DomainPack(
 
 ID_DOCUMENT = DomainPack(
     name="id_document",
+    industry="identity",
     label="ID Document",
     description="Passports & licenses — number, expiry, and authenticity signals.",
     icon="IdCard",
@@ -242,6 +248,7 @@ ID_DOCUMENT = DomainPack(
 
 BANK_STATEMENT = DomainPack(
     name="bank_statement",
+    industry="banking",
     label="Bank Statement",
     description="Statements — transactions with a reconciling running balance.",
     icon="Landmark",
@@ -265,6 +272,371 @@ BANK_STATEMENT = DomainPack(
     extra_checks=[_bank_balance],
 )
 
+# ---------------------------------------------------------------------------
+# Extra deterministic helpers for the new packs
+# ---------------------------------------------------------------------------
+
+def _date_order(start_key: str, end_key: str, label: str):
+    def _check(ext: Extraction) -> List[Check]:
+        a = _parse_date(ext.value(start_key))
+        b = _parse_date(ext.value(end_key))
+        if a and b:
+            ok = b >= a
+            return [Check(rule=label, passed=ok,
+                          reason=(f"{a.isoformat()} → {b.isoformat()}." if ok
+                                  else f"End {b.isoformat()} precedes start {a.isoformat()}."))]
+        return []
+    return _check
+
+
+# ===========================================================================
+# Finance & Accounting
+# ===========================================================================
+
+CREDIT_NOTE = DomainPack(
+    name="credit_note", label="Credit Note", industry="finance",
+    description="Supplier credit/debit notes — amount credited against an invoice.",
+    icon="ReceiptText",
+    detect_hints=["credit note", "debit note", "credit memo", "against invoice"],
+    fields=[
+        FieldSpec("note_number", "Credit Note No.", "id", required=True),
+        FieldSpec("vendor_name", "Vendor", "text", required=True),
+        FieldSpec("note_date", "Date", "date", required=True),
+        FieldSpec("original_invoice", "Against Invoice", "id"),
+        FieldSpec("reason", "Reason", "text"),
+        FieldSpec("total", "Amount Credited", "currency", required=True),
+    ],
+    date_fields=["note_date"], identity_fields=["note_number", "vendor_name"],
+    party_field="vendor_name", amount_field="total",
+)
+
+EXPENSE_REPORT = DomainPack(
+    name="expense_report", label="Expense Report", industry="finance",
+    description="Employee expense claims — line items reconciled to a claimed total.",
+    icon="Wallet",
+    detect_hints=["expense report", "reimbursement", "claim", "expense claim"],
+    fields=[
+        FieldSpec("employee", "Employee", "text", required=True),
+        FieldSpec("period", "Period", "text"),
+        FieldSpec("report_date", "Date", "date"),
+        FieldSpec("total", "Total Claimed", "currency", required=True),
+    ],
+    tables=[TableSpec("expenses", "Expenses", [
+        ColumnSpec("description", "Description"), ColumnSpec("category", "Category"),
+        ColumnSpec("amount", "Amount", "number"),
+    ])],
+    arithmetic=[ArithmeticRule("sum_col_equals_field", "Expenses reconcile",
+                               table="expenses", column="amount", field="total")],
+    date_fields=["report_date"], identity_fields=["employee", "period", "total"],
+    party_field="employee", amount_field="total",
+)
+
+TAX_FORM = DomainPack(
+    name="tax_form", label="Tax Form", industry="finance",
+    description="Tax statements (W-2/1099/GST) — IDs and cross-field amounts.",
+    icon="FileDigit",
+    detect_hints=["w-2", "1099", "tax", "gst", "vat", "taxable", "withholding", "tax year"],
+    fields=[
+        FieldSpec("form_type", "Form Type", "text"),
+        FieldSpec("taxpayer_id", "Taxpayer ID", "id", required=True),
+        FieldSpec("taxpayer_name", "Taxpayer", "text", required=True),
+        FieldSpec("tax_year", "Tax Year", "text"),
+        FieldSpec("gross_income", "Gross Income", "currency"),
+        FieldSpec("tax_withheld", "Tax Withheld", "currency"),
+    ],
+    identity_fields=["taxpayer_id", "tax_year", "form_type"],
+    party_field="taxpayer_name", account_field="taxpayer_id", amount_field="gross_income",
+)
+
+QUOTE = DomainPack(
+    name="quote", label="Quote / Estimate", industry="finance",
+    description="Vendor quotes & estimates — priced line items with a validity date.",
+    icon="FileText",
+    detect_hints=["quotation", "quote", "estimate", "valid until", "proposal"],
+    fields=[
+        FieldSpec("quote_number", "Quote No.", "id", required=True),
+        FieldSpec("vendor_name", "Vendor", "text", required=True),
+        FieldSpec("quote_date", "Date", "date"),
+        FieldSpec("valid_until", "Valid Until", "date"),
+        FieldSpec("total", "Total", "currency", required=True),
+    ],
+    tables=[TableSpec("line_items", "Line Items", [
+        ColumnSpec("description", "Description"), ColumnSpec("quantity", "Qty", "number"),
+        ColumnSpec("unit_price", "Unit Price", "number"), ColumnSpec("amount", "Amount", "number"),
+    ])],
+    arithmetic=[ArithmeticRule("sum_col_equals_field", "Totals reconcile",
+                               table="line_items", column="amount", field="total")],
+    date_fields=["quote_date", "valid_until"], identity_fields=["quote_number"],
+    party_field="vendor_name", amount_field="total",
+)
+
+# ===========================================================================
+# Banking & Lending
+# ===========================================================================
+
+PAY_STUB = DomainPack(
+    name="pay_stub", label="Pay Stub", industry="banking",
+    description="Salary slips — gross, deductions and net pay reconciled.",
+    icon="Banknote",
+    detect_hints=["pay stub", "payslip", "salary", "gross pay", "net pay", "earnings", "deductions"],
+    fields=[
+        FieldSpec("employee", "Employee", "text", required=True),
+        FieldSpec("employer", "Employer", "text"),
+        FieldSpec("pay_period", "Pay Period", "text"),
+        FieldSpec("gross_pay", "Gross Pay", "currency", required=True),
+        FieldSpec("deductions", "Deductions", "currency"),
+        FieldSpec("net_pay", "Net Pay", "currency", required=True),
+    ],
+    arithmetic=[ArithmeticRule("fields_sum_equals", "Net pay math",
+                               add_fields=["net_pay", "deductions"], field="gross_pay")],
+    identity_fields=["employee", "pay_period"], party_field="employee", amount_field="net_pay",
+)
+
+LOAN_APPLICATION = DomainPack(
+    name="loan_application", label="Loan Application", industry="banking",
+    description="Loan/mortgage files — applicant, amount, income and purpose.",
+    icon="HandCoins",
+    detect_hints=["loan application", "mortgage", "borrower", "loan amount", "annual income"],
+    fields=[
+        FieldSpec("applicant", "Applicant", "text", required=True),
+        FieldSpec("application_date", "Date", "date"),
+        FieldSpec("loan_amount", "Loan Amount", "currency", required=True),
+        FieldSpec("term_months", "Term (months)", "number"),
+        FieldSpec("annual_income", "Annual Income", "currency"),
+        FieldSpec("purpose", "Purpose", "text"),
+    ],
+    date_fields=["application_date"], identity_fields=["applicant", "application_date"],
+    party_field="applicant", amount_field="loan_amount",
+)
+
+# ===========================================================================
+# Insurance & Healthcare
+# ===========================================================================
+
+INSURANCE_CLAIM = DomainPack(
+    name="insurance_claim", label="Insurance Claim", industry="insurance_health",
+    description="Claims — claimant, policy and amount, with duplicate-claim detection.",
+    icon="ShieldAlert",
+    detect_hints=["claim", "policy number", "insured", "claim amount", "date of loss"],
+    fields=[
+        FieldSpec("claim_number", "Claim No.", "id", required=True),
+        FieldSpec("claimant", "Claimant", "text", required=True),
+        FieldSpec("policy_number", "Policy No.", "id"),
+        FieldSpec("claim_date", "Claim Date", "date"),
+        FieldSpec("claim_amount", "Claim Amount", "currency", required=True),
+    ],
+    date_fields=["claim_date"], identity_fields=["claim_number", "policy_number"],
+    party_field="claimant", amount_field="claim_amount",
+)
+
+MEDICAL_BILL = DomainPack(
+    name="medical_bill", label="Medical Bill", industry="insurance_health",
+    description="Hospital/clinic bills — charges reconciled, duplicate-billing flagged.",
+    icon="Stethoscope",
+    detect_hints=["patient", "hospital", "clinic", "diagnosis", "medical", "amount due", "invoice"],
+    fields=[
+        FieldSpec("patient", "Patient", "text", required=True),
+        FieldSpec("provider", "Provider", "text"),
+        FieldSpec("service_date", "Service Date", "date"),
+        FieldSpec("total", "Total", "currency", required=True),
+    ],
+    tables=[TableSpec("charges", "Charges", [
+        ColumnSpec("description", "Service"), ColumnSpec("code", "Code"),
+        ColumnSpec("amount", "Amount", "number"),
+    ])],
+    arithmetic=[ArithmeticRule("sum_col_equals_field", "Charges reconcile",
+                               table="charges", column="amount", field="total")],
+    date_fields=["service_date"], identity_fields=["patient", "provider", "service_date", "total"],
+    party_field="patient", amount_field="total",
+)
+
+PRESCRIPTION = DomainPack(
+    name="prescription", label="Prescription", industry="insurance_health",
+    description="Prescriptions — prescriber, patient and medication list.",
+    icon="Pill",
+    detect_hints=["prescription", "rx", "dosage", "sig", "refill", "dr.", "mg"],
+    fields=[
+        FieldSpec("patient", "Patient", "text", required=True),
+        FieldSpec("prescriber", "Prescriber", "text", required=True),
+        FieldSpec("prescription_date", "Date", "date"),
+    ],
+    tables=[TableSpec("medications", "Medications", [
+        ColumnSpec("drug", "Drug"), ColumnSpec("dosage", "Dosage"), ColumnSpec("quantity", "Qty", "number"),
+    ])],
+    date_fields=["prescription_date"], identity_fields=["patient", "prescriber", "prescription_date"],
+    party_field="patient",
+)
+
+# ===========================================================================
+# HR & Recruiting
+# ===========================================================================
+
+OFFER_LETTER = DomainPack(
+    name="offer_letter", label="Offer Letter", industry="hr",
+    description="Employment offers — role, compensation and start date.",
+    icon="MailCheck",
+    detect_hints=["offer", "we are pleased to offer", "position", "annual salary", "start date"],
+    fields=[
+        FieldSpec("candidate", "Candidate", "text", required=True),
+        FieldSpec("employer", "Employer", "text", required=True),
+        FieldSpec("role", "Role", "text"),
+        FieldSpec("salary", "Salary", "currency"),
+        FieldSpec("start_date", "Start Date", "date"),
+    ],
+    date_fields=["start_date"], identity_fields=["candidate", "employer", "role"],
+    party_field="candidate", amount_field="salary",
+)
+
+CERTIFICATE = DomainPack(
+    name="certificate", label="Certificate", industry="hr",
+    description="Degrees & certifications — holder, issuer and credential ID.",
+    icon="Award",
+    detect_hints=["certificate", "certify", "awarded", "has completed", "credential", "diploma"],
+    fields=[
+        FieldSpec("holder", "Holder", "text", required=True),
+        FieldSpec("issuer", "Issuer", "text", required=True),
+        FieldSpec("title", "Title", "text"),
+        FieldSpec("issue_date", "Issue Date", "date"),
+        FieldSpec("credential_id", "Credential ID", "id"),
+    ],
+    date_fields=["issue_date"], identity_fields=["credential_id", "holder", "title"],
+    party_field="holder",
+)
+
+# ===========================================================================
+# Identity & KYC
+# ===========================================================================
+
+UTILITY_BILL = DomainPack(
+    name="utility_bill", label="Utility Bill", industry="identity",
+    description="Proof-of-address bills — holder, service address and amount due.",
+    icon="Plug",
+    detect_hints=["utility", "electricity", "water", "gas bill", "service address", "amount due", "meter"],
+    fields=[
+        FieldSpec("account_holder", "Account Holder", "text", required=True),
+        FieldSpec("provider", "Provider", "text"),
+        FieldSpec("service_address", "Service Address", "text", required=True),
+        FieldSpec("billing_date", "Billing Date", "date"),
+        FieldSpec("amount_due", "Amount Due", "currency"),
+    ],
+    date_fields=["billing_date"], identity_fields=["account_holder", "billing_date"],
+    party_field="account_holder", amount_field="amount_due",
+)
+
+# ===========================================================================
+# Legal & Real Estate
+# ===========================================================================
+
+NDA = DomainPack(
+    name="nda", label="NDA", industry="legal",
+    description="Non-disclosure agreements — parties and effective term.",
+    icon="FileLock2",
+    detect_hints=["non-disclosure", "nda", "confidential", "disclosing party", "receiving party"],
+    fields=[
+        FieldSpec("party_a", "Disclosing Party", "text", required=True),
+        FieldSpec("party_b", "Receiving Party", "text", required=True),
+        FieldSpec("effective_date", "Effective Date", "date"),
+        FieldSpec("expiry_date", "Expiry Date", "date"),
+        FieldSpec("governing_law", "Governing Law", "text"),
+    ],
+    date_fields=["effective_date", "expiry_date"],
+    identity_fields=["party_a", "party_b", "effective_date"], party_field="party_a",
+    extra_checks=[_date_order("effective_date", "expiry_date", "Term dates ordered")],
+)
+
+LEASE_AGREEMENT = DomainPack(
+    name="lease_agreement", label="Lease Agreement", industry="legal",
+    description="Property leases — landlord, tenant, term and rent.",
+    icon="KeyRound",
+    detect_hints=["lease", "landlord", "tenant", "premises", "rent", "security deposit"],
+    fields=[
+        FieldSpec("landlord", "Landlord", "text", required=True),
+        FieldSpec("tenant", "Tenant", "text", required=True),
+        FieldSpec("property_address", "Property", "text", required=True),
+        FieldSpec("start_date", "Start Date", "date"),
+        FieldSpec("end_date", "End Date", "date"),
+        FieldSpec("monthly_rent", "Monthly Rent", "currency"),
+    ],
+    date_fields=["start_date", "end_date"],
+    identity_fields=["landlord", "tenant", "property_address", "start_date"],
+    party_field="landlord", amount_field="monthly_rent",
+    extra_checks=[_date_order("start_date", "end_date", "Lease dates ordered")],
+)
+
+# ===========================================================================
+# Logistics & Trade
+# ===========================================================================
+
+BILL_OF_LADING = DomainPack(
+    name="bill_of_lading", label="Bill of Lading", industry="logistics",
+    description="Shipping BOLs — shipper, consignee, carrier and cargo.",
+    icon="Ship",
+    detect_hints=["bill of lading", "b/l", "shipper", "consignee", "carrier", "port of loading"],
+    fields=[
+        FieldSpec("bol_number", "B/L No.", "id", required=True),
+        FieldSpec("shipper", "Shipper", "text", required=True),
+        FieldSpec("consignee", "Consignee", "text"),
+        FieldSpec("carrier", "Carrier", "text"),
+        FieldSpec("ship_date", "Date", "date"),
+    ],
+    date_fields=["ship_date"], identity_fields=["bol_number"], party_field="shipper",
+)
+
+PACKING_LIST = DomainPack(
+    name="packing_list", label="Packing List", industry="logistics",
+    description="Packing lists — items and quantities for goods-received match.",
+    icon="PackageOpen",
+    detect_hints=["packing list", "packing slip", "carton", "net weight", "quantity", "package"],
+    fields=[
+        FieldSpec("reference", "Reference", "id", required=True),
+        FieldSpec("shipper", "Shipper", "text"),
+        FieldSpec("list_date", "Date", "date"),
+    ],
+    tables=[TableSpec("items", "Items", [
+        ColumnSpec("description", "Description"), ColumnSpec("quantity", "Qty", "number"),
+    ])],
+    date_fields=["list_date"], identity_fields=["reference"], party_field="shipper",
+)
+
+DELIVERY_NOTE = DomainPack(
+    name="delivery_note", label="Delivery Note", industry="logistics",
+    description="Delivery/goods-received notes — supplier and delivered items.",
+    icon="Truck",
+    detect_hints=["delivery note", "goods received", "grn", "delivered", "received by"],
+    fields=[
+        FieldSpec("delivery_number", "Delivery No.", "id", required=True),
+        FieldSpec("supplier", "Supplier", "text", required=True),
+        FieldSpec("delivery_date", "Date", "date"),
+    ],
+    tables=[TableSpec("items", "Items", [
+        ColumnSpec("description", "Description"), ColumnSpec("quantity", "Qty", "number"),
+    ])],
+    date_fields=["delivery_date"], identity_fields=["delivery_number"], party_field="supplier",
+)
+
+# ===========================================================================
+# Education & Academic
+# ===========================================================================
+
+TRANSCRIPT = DomainPack(
+    name="transcript", label="Transcript", industry="academic",
+    description="Academic transcripts & mark sheets — courses, grades and GPA.",
+    icon="GraduationCap",
+    detect_hints=["transcript", "marksheet", "mark sheet", "gpa", "grade", "semester", "credits"],
+    fields=[
+        FieldSpec("student_name", "Student", "text", required=True),
+        FieldSpec("institution", "Institution", "text", required=True),
+        FieldSpec("program", "Program", "text"),
+        FieldSpec("gpa", "GPA", "number"),
+    ],
+    tables=[TableSpec("courses", "Courses", [
+        ColumnSpec("course", "Course"), ColumnSpec("credits", "Credits", "number"),
+        ColumnSpec("grade", "Grade"),
+    ])],
+    identity_fields=["student_name", "institution", "program"], party_field="student_name",
+)
+
+
 GENERIC = DomainPack(
     name="generic",
     label="Any Document",
@@ -283,5 +655,22 @@ GENERIC = DomainPack(
 )
 
 ALL_PACKS = [
-    INVOICE, RECEIPT, RESUME, PURCHASE_ORDER, CONTRACT, ID_DOCUMENT, BANK_STATEMENT, GENERIC,
+    # Finance & Accounting
+    INVOICE, RECEIPT, CREDIT_NOTE, EXPENSE_REPORT, TAX_FORM, QUOTE,
+    # Banking & Lending
+    BANK_STATEMENT, PAY_STUB, LOAN_APPLICATION,
+    # Insurance & Healthcare
+    INSURANCE_CLAIM, MEDICAL_BILL, PRESCRIPTION,
+    # HR & Recruiting
+    RESUME, OFFER_LETTER, CERTIFICATE,
+    # Identity & KYC
+    ID_DOCUMENT, UTILITY_BILL,
+    # Legal & Real Estate
+    CONTRACT, NDA, LEASE_AGREEMENT,
+    # Logistics & Trade
+    PURCHASE_ORDER, BILL_OF_LADING, PACKING_LIST, DELIVERY_NOTE,
+    # Education & Academic
+    TRANSCRIPT,
+    # Universal fallback (keep last)
+    GENERIC,
 ]

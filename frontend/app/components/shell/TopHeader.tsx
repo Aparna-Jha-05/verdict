@@ -8,6 +8,7 @@ import ThemeToggle from "./ThemeToggle";
 
 const TITLES: Record<string, { eyebrow: string; title: string }> = {
   "/": { eyebrow: "Overview", title: "Dashboard" },
+  "/industries": { eyebrow: "Choose your workspace", title: "Industries" },
   "/review": { eyebrow: "Human approval gate", title: "Review" },
   "/ledger": { eyebrow: "Approved records", title: "Ledger" },
   "/audit": { eyebrow: "Activity trail", title: "Audit" },

@@ -90,6 +90,7 @@ class DomainPack:
     description: str
     icon: str  # lucide-react icon name for the UI
     fields: List[FieldSpec]
+    industry: str = "general"  # industry-group key (see packs.industries)
     detect_hints: List[str] = dc_field(default_factory=list)
     tables: List[TableSpec] = dc_field(default_factory=list)
     arithmetic: List[ArithmeticRule] = dc_field(default_factory=list)

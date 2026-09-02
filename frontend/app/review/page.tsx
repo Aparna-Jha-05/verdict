@@ -1,7 +1,12 @@
 "use client";
 
-import { Activity, FileText, ScanLine, ShieldCheck, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Activity, FileText, LayoutGrid, ScanLine, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import DomainIcon from "../components/shell/DomainIcon";
+import { getIndustries } from "../lib/api";
+import type { Industry } from "../lib/types";
 import AnomalyPanel from "../components/review/AnomalyPanel";
 import ApproveBar from "../components/review/ApproveBar";
 import BadgeBar from "../components/review/BadgeBar";
@@ -16,10 +21,32 @@ import { useProcess } from "../context/ProcessContext";
 type TabId = "fields" | "checks" | "integrity" | "signals";
 
 export default function ReviewPage() {
+  return (
+    <Suspense fallback={<div className="panel py-16 text-center text-muted">Loading…</div>}>
+      <ReviewInner />
+    </Suspense>
+  );
+}
+
+function ReviewInner() {
   const { resp, extraction, error, processing, activeKey, setActiveKey, editField } =
     useProcess();
+  const searchParams = useSearchParams();
+  const industry = searchParams.get("industry") || undefined;
+  const [industryMeta, setIndustryMeta] = useState<Industry | null>(null);
   const [tab, setTab] = useState<TabId>("fields");
   const [visited, setVisited] = useState<Set<TabId>>(new Set(["fields"]));
+
+  // Resolve the industry label/icon for the workspace banner.
+  useEffect(() => {
+    if (!industry) {
+      setIndustryMeta(null);
+      return;
+    }
+    getIndustries()
+      .then((list) => setIndustryMeta(list.find((i) => i.key === industry) || null))
+      .catch(() => setIndustryMeta(null));
+  }, [industry]);
 
   const hasSignals = !!(resp?.similarity || resp?.anomaly);
 
@@ -52,9 +79,27 @@ export default function ReviewPage() {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_1fr]">
+    <div className="flex flex-col gap-5">
+      {industryMeta && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gold/30 bg-gold/[0.06] px-4 py-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gold/15 text-gold">
+            <DomainIcon name={industryMeta.icon} className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">{industryMeta.label} workspace</div>
+            <div className="text-[11px] text-muted">
+              Scoped to {industryMeta.count} document type{industryMeta.count > 1 ? "s" : ""}.
+            </div>
+          </div>
+          <Link href="/industries" className="flex items-center gap-1 text-xs font-semibold text-violet hover:underline">
+            <LayoutGrid className="h-3.5 w-3.5" /> Change workspace
+          </Link>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_1fr]">
       <div className="flex flex-col gap-5">
-        <Uploader />
+        <Uploader industryFilter={industry} />
         {resp && extraction && (
           <>
             <BadgeBar resp={resp} />
@@ -161,6 +206,7 @@ export default function ReviewPage() {
             )}
           </>
         )}
+      </div>
       </div>
     </div>
   );

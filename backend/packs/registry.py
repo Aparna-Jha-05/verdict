@@ -8,6 +8,7 @@ from typing import List
 from schema import DomainInfo
 
 from .base import DomainPack
+from .industries import INDUSTRIES
 from .library import ALL_PACKS, GENERIC
 
 REGISTRY = {p.name: p for p in ALL_PACKS}
@@ -29,12 +30,34 @@ def all_domains() -> List[DomainInfo]:
                 label=p.label,
                 description=p.description,
                 icon=p.icon,
+                industry=p.industry,
                 needs_second_input=p.needs_second_input,
                 second_input_label=(p.similarity.second_input_label if p.similarity else ""),
                 integrity_label=p.integrity_label,
             )
         )
     return infos
+
+
+def all_industries() -> List[dict]:
+    """Industry groups with their document types — powers the hub landing page."""
+    out = []
+    for key, meta in INDUSTRIES.items():
+        docs = [
+            {"name": p.name, "label": p.label, "icon": p.icon, "description": p.description}
+            for p in ALL_PACKS if p.industry == key
+        ]
+        if not docs:
+            continue
+        out.append({
+            "key": key,
+            "label": meta["label"],
+            "icon": meta["icon"],
+            "tagline": meta["tagline"],
+            "count": len(docs),
+            "documents": docs,
+        })
+    return out
 
 
 def detect_domain(text: str) -> str:

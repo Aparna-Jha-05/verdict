@@ -186,6 +186,7 @@ class DomainInfo(BaseModel):
     label: str
     description: str
     icon: str
+    industry: str = "general"
     needs_second_input: bool = False
     second_input_label: str = ""
     integrity_label: str = "Integrity & Risk"

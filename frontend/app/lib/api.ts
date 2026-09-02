@@ -5,6 +5,7 @@ import type {
   Billing,
   DomainInfo,
   Extraction,
+  Industry,
   LedgerRecord,
   ProcessResponse,
   Stats,
@@ -104,6 +105,12 @@ export async function getDomains(): Promise<DomainInfo[]> {
   const res = await fetch(`${API_BASE}/domains`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Domains failed (${res.status})`);
   return (await res.json()).domains;
+}
+
+export async function getIndustries(): Promise<Industry[]> {
+  const res = await fetch(`${API_BASE}/industries`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Industries failed (${res.status})`);
+  return (await res.json()).industries;
 }
 
 export async function processDocument(

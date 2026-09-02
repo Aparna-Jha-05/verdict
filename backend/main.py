@@ -62,6 +62,12 @@ def domains_endpoint() -> dict:
     return {"domains": [d.model_dump() for d in all_domains()]}
 
 
+@app.get("/industries")
+def industries_endpoint() -> dict:
+    from packs.registry import all_industries
+    return {"industries": all_industries()}
+
+
 # ------------------------- accounts / billing -------------------------
 
 def _public(user: dict) -> dict:
