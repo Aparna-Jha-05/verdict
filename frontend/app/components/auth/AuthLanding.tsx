@@ -57,7 +57,7 @@ export default function AuthLanding() {
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-violet to-gold text-on-accent">
             <ScanLine className="h-5 w-5" />
           </span>
-          <span className="text-2xl font-extrabold tracking-tight">Verdict</span>
+          <span className="text-2xl font-extrabold tracking-tight">Credence</span>
         </div>
         <div className="max-w-md">
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight">

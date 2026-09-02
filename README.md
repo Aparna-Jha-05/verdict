@@ -41,7 +41,7 @@ call an LLM. Fraud results are always *flags for human review* — never
 
 ## The models we use (plain English)
 
-Verdict deliberately uses three *different kinds* of "intelligence," each for a
+Credence deliberately uses three *different kinds* of "intelligence," each for a
 job it's actually good at. Knowing which is which matters: the fancy AI only
 *reads*; the deciding is done by simpler, explainable methods.
 
@@ -82,7 +82,7 @@ job it's actually good at. Knowing which is which matters: the fancy AI only
 **The takeaway:** the powerful AI (GPT-4o) is only allowed to *read*. Everything
 that *decides* — correctness, fraud, anomalies, matches — is done by explainable
 methods (rules, meaning-similarity, statistics) and a human. That's what makes
-Verdict safe to trust with money and hiring.
+Credence safe to trust with money and hiring.
 
 ---
 

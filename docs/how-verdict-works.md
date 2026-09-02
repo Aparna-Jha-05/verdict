@@ -1,4 +1,4 @@
-# How Verdict Works — In Plain Words
+# How Credence Works — In Plain Words
 
 A guide to your own application: what it does, what every piece of the tech stack
 means, and — most importantly — **where we used AI, where we deliberately did not,
@@ -10,7 +10,7 @@ Read this top to bottom. No prior knowledge assumed.
 
 ## 1. The whole thing in one paragraph
 
-Verdict takes an invoice — a PDF, a scan, or a photo from a phone — and does four
+Credence takes an invoice — a PDF, a scan, or a photo from a phone — and does four
 things: (1) it **reads** the invoice using an AI vision model that looks at the
 image and pulls out the important fields; (2) it **checks the math and the rules**
 using plain, ordinary computer code (no AI); (3) it **looks for fraud** using more
@@ -23,7 +23,7 @@ to decide.* All the deciding is done by predictable, rule-based code.
 
 ## 2. The journey of one invoice (step by step)
 
-Imagine you drop `invoice.pdf` into Verdict. Here's what happens, in order:
+Imagine you drop `invoice.pdf` into Credence. Here's what happens, in order:
 
 1. **Upload.** The file lands on our server.
 2. **Ingest (make it a picture).** A PDF isn't an image, and a photo already is.
@@ -166,7 +166,7 @@ it and when. We read that hidden data and flag it if:
 
 **Check B — vendor bank-account change.** This is the single most common real-world
 invoice fraud: a scammer emails a fake invoice from a real vendor with *their own*
-bank account. Verdict remembers every vendor's bank account from past approvals (in
+bank account. Credence remembers every vendor's bank account from past approvals (in
 SQLite). When a new invoice arrives, it looks up that vendor and, if the bank account
 is different from before, raises a loud flag: *"Bank account for {vendor} differs from
 the previously approved account."* It's just a database lookup and a string
@@ -269,5 +269,5 @@ confidence.
 
 ## 10. The one sentence to remember
 
-**Verdict uses AI to *read* documents and ordinary, auditable code to *decide* about
+**Credence uses AI to *read* documents and ordinary, auditable code to *decide* about
 them — and keeps a human in charge of every approval.** Everything else is detail.

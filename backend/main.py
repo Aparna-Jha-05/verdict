@@ -32,7 +32,7 @@ from packs.library import ALL_PACKS
 from route import process as route_process
 from schema import Extraction, ProcessResponse
 
-app = FastAPI(title="Verdict — Document Intelligence", version="3.0.0")
+app = FastAPI(title="Credence — Document Intelligence", version="3.0.0")
 
 _origins_env = os.environ.get("CORS_ORIGINS", "*")
 _origins = ["*"] if _origins_env.strip() == "*" else [o.strip() for o in _origins_env.split(",") if o.strip()]
@@ -54,7 +54,7 @@ def _startup() -> None:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "verdict-document-intelligence"}
+    return {"status": "ok", "service": "credence-document-intelligence"}
 
 
 @app.get("/domains")
@@ -106,7 +106,7 @@ def signup(req: SignupRequest) -> dict:
 def guest() -> dict:
     """One-click instant free trial — provisions a throwaway trial account."""
     import secrets as _s
-    email = f"guest-{_s.token_hex(4)}@verdict.trial"
+    email = f"guest-{_s.token_hex(4)}@credence.trial"
     user = accounts.create_user(email, _s.token_urlsafe(12), "Guest (trial)",
                                 account_type="trial", trial_credits=accounts.TRIAL_CREDITS)
     return _auth_payload(user)
@@ -292,7 +292,7 @@ class AskRequest(BaseModel):
 
 @app.post("/assistant")
 def assistant_endpoint(req: AskRequest, user: dict = Depends(auth.current_user)) -> dict:
-    """Ask Verdict — grounded answers about your data and how the platform works."""
+    """Ask Credence — grounded answers about your data and how the platform works."""
     return assistant.answer(req.question, user)
 
 
@@ -334,7 +334,7 @@ def draft_query(req: ApproveRequest) -> dict:
                      "Please confirm this change from a known, trusted contact.")
     else:
         lines.append("  • Please confirm the key details above are correct and current.")
-    lines += ["", "We will hold this in review until we receive written confirmation.", "", "Thank you,", "Verdict Review"]
+    lines += ["", "We will hold this in review until we receive written confirmation.", "", "Thank you,", "Credence Review"]
     return {"draft": "\n".join(lines), "changed": changed}
 
 

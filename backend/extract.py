@@ -143,7 +143,7 @@ def _call(image_b64: str, model: str, system: str, user: str) -> str:
     headers = {"Authorization": f"Bearer {_token()}", "Content-Type": "application/json"}
     if OPENROUTER_KEY:
         headers["HTTP-Referer"] = os.environ.get("OPENROUTER_REFERER", "https://verdict-three-ashen.vercel.app")
-        headers["X-Title"] = "Verdict Document Intelligence"
+        headers["X-Title"] = "Credence Document Intelligence"
     url = f"{AIPIPE_BASE}{CHAT_ROUTE}"
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:

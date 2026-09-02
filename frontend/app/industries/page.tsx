@@ -26,7 +26,7 @@ export default function IndustriesPage() {
       <div className="panel bg-gradient-to-br from-violet/[0.12] to-transparent">
         <h2 className="text-xl font-extrabold tracking-tight">Choose your workspace</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          Verdict is one engine across every industry. Pick a workspace to scope it to just
+          Credence is one engine across every industry. Pick a workspace to scope it to just
           your document types — or jump straight in and let auto-detect decide.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">

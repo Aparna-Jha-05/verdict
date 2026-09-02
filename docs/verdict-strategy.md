@@ -1,7 +1,7 @@
-# Verdict — Revenue, Robustness & the Multi-Domain Platform
+# Credence — Revenue, Robustness & the Multi-Domain Platform
 
 *A written response to the mentors' feedback. Three questions, answered:*
-1. **How does Verdict make money?** (the revenue model)
+1. **How does Credence make money?** (the revenue model)
 2. **What happens when a document has new fields or a new format we've never seen?** (robustness)
 3. **How do we grow from invoices into many domains?** (the platform upgrade)
 
@@ -17,7 +17,7 @@ We do **not** sell "an app that reads documents." Everyone can read a document w
 > **The one-liner for the pitch:** *"We're not a cost center. We're insurance that pays for itself the first time it stops a fraudulent payment."*
 
 ### Four stacked revenue streams
-A serious document-AI business rarely has one price. Verdict stacks four, so it captures both small teams and enterprises:
+A serious document-AI business rarely has one price. Credence stacks four, so it captures both small teams and enterprises:
 
 | # | Stream | How it works | Why it exists |
 |---|--------|--------------|---------------|
@@ -37,9 +37,9 @@ A serious document-AI business rarely has one price. Verdict stacks four, so it 
 | **Price (usage)** | **$0.10 – 0.25 / document** | **~95%+ gross margin at the unit level** |
 
 ### The ROI story (the number that closes)
-Vendor-impersonation / business-email-compromise fraud — exactly the **changed-bank-account** case Verdict catches — averages **tens of thousands of dollars per incident** (commonly $30k–$120k). 
+Vendor-impersonation / business-email-compromise fraud — exactly the **changed-bank-account** case Credence catches — averages **tens of thousands of dollars per incident** (commonly $30k–$120k). 
 
-> **One prevented fraudulent payment pays for years of subscription.** That is the entire economic argument, and Verdict *demonstrably* catches it on stage.
+> **One prevented fraudulent payment pays for years of subscription.** That is the entire economic argument, and Credence *demonstrably* catches it on stage.
 
 ### Suggested pricing table (concrete, for the slide)
 | Plan | Price | Includes |
@@ -64,7 +64,7 @@ Each is a different *domain pack* on the **same engine** — which is exactly wh
 The mentors asked the right question: *"What if a new invoice or resume shows up with fields we've never seen, in a format we've never seen?"* Here is the honest, layered answer.
 
 ### Layer 1 — New *layouts* are already free
-Verdict is **vision-first, no OCR templates.** We send the page image to the model and ask *what fields it sees* — we never say *where to look.* So a brand-new invoice layout, a different bank's statement, a resume in an unusual template… all Just Work, because we never hard-coded positions. **This is the single biggest robustness advantage of the no-OCR design, and it's already built.**
+Credence is **vision-first, no OCR templates.** We send the page image to the model and ask *what fields it sees* — we never say *where to look.* So a brand-new invoice layout, a different bank's statement, a resume in an unusual template… all Just Work, because we never hard-coded positions. **This is the single biggest robustness advantage of the no-OCR design, and it's already built.**
 
 ### Layer 2 — New *fields* → an adaptive, open schema
 Today each domain has a fixed schema (invoice_number, total, …). We upgrade it to **core fields + an open catch-all**:
@@ -97,7 +97,7 @@ Schemas evolve. Every processed/approved record stores the **schema version** it
 ## Part 3 — The multi-domain platform (the upgrade)
 
 ### Architecture: one engine, pluggable domain packs
-We refactor Verdict's spine into a **domain-agnostic engine** (ingest → extract → verify → human gate → ledger) plus swappable **domain packs.** A pack is a small declaration:
+We refactor Credence's spine into a **domain-agnostic engine** (ingest → extract → verify → human gate → ledger) plus swappable **domain packs.** A pack is a small declaration:
 
 ```
 DomainPack:

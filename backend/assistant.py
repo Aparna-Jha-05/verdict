@@ -1,4 +1,4 @@
-"""Ask Verdict — a grounded assistant behind the search bar.
+"""Ask Credence — a grounded assistant behind the search bar.
 
 It answers questions about the user's own data (counts, credits, flags) and about
 how the platform works. A deterministic intent layer handles the common questions
@@ -20,7 +20,7 @@ import store
 # Short knowledge base — plain-language explanations the assistant can cite.
 _KB = {
     "models": (
-        "Verdict uses three kinds of intelligence: a vision AI (gpt-4o-mini, "
+        "Credence uses three kinds of intelligence: a vision AI (gpt-4o-mini, "
         "escalating to gpt-4o) that reads the document; a local ML embedding model "
         "(all-MiniLM-L6-v2) for meaning-matching (duplicates, résumé↔JD); and a "
         "robust z-score statistic for anomaly detection. The AI only reads — "
@@ -51,12 +51,12 @@ _KB = {
         "fields are present, and dates are sane. Same answer every time."
     ),
     "escalation": (
-        "A cheap fast model runs by default; if it's unsure (low confidence) Verdict "
+        "A cheap fast model runs by default; if it's unsure (low confidence) Credence "
         "automatically retries with a stronger model. You pay for the big model only "
         "when needed."
     ),
     "usp": (
-        "Across every document type the common thread is the same: Verdict is a "
+        "Across every document type the common thread is the same: Credence is a "
         "trust layer. It doesn't just extract — it verifies with explainable code, "
         "flags fraud and anomalies, keeps an audit trail, and puts a human in "
         "charge. That verification-and-trust layer is the unique selling point."
@@ -64,7 +64,7 @@ _KB = {
 }
 
 _DOMAIN_HELP = (
-    "Verdict handles invoices, receipts, résumés, purchase orders, contracts, ID "
+    "Credence handles invoices, receipts, résumés, purchase orders, contracts, ID "
     "documents and bank statements today — one engine, more domains added over time."
 )
 
@@ -123,7 +123,7 @@ def answer(question: str, user: dict) -> dict:
     if re.search(r"domain|document type|what.*process|what.*handle|what can", q):
         return _reply(_DOMAIN_HELP, nav="/review")
     if re.search(r"^\s*(hi|hello|hey)\b|what can you do|help", q):
-        return _reply("I'm Verdict's assistant. Ask me things like 'how many flagged?', "
+        return _reply("I'm Credence's assistant. Ask me things like 'how many flagged?', "
                       "'what's my credit balance?', 'how does the anomaly check work?', or "
                       "'what's our unique selling point?'.", suggestions=_SUGGESTIONS)
 
@@ -132,7 +132,7 @@ def answer(question: str, user: dict) -> dict:
     if llm:
         return _reply(llm)
     return _reply(
-        "I can answer that best about your data and how Verdict works. Try asking about "
+        "I can answer that best about your data and how Credence works. Try asking about "
         "flags, credits, the models, or a specific check (fraud, anomaly, duplicate, résumé).",
         suggestions=_SUGGESTIONS,
     )
@@ -166,7 +166,7 @@ def _try_llm(question: str, stats: dict, bill: dict) -> Optional[str]:
             f"Live facts: processed={stats['processed']}, approved={stats['approved']}, "
             f"flagged={stats['flagged']}, escalation_rate={stats['escalation_rate']}. "
             f"Account={bill['account_type']}, trial_credits={bill['trial_credits']}. "
-            "Verdict reads documents with a vision AI, verifies them with deterministic "
+            "Credence reads documents with a vision AI, verifies them with deterministic "
             "code + ML signals, and keeps a human approval gate. Domains: invoice, "
             "receipt, resume, purchase_order, contract, id_document, bank_statement."
         )
@@ -176,7 +176,7 @@ def _try_llm(question: str, stats: dict, bill: dict) -> Optional[str]:
             "max_tokens": 220,
             "messages": [
                 {"role": "system", "content":
-                 "You are Verdict's in-app assistant. Answer in 1-3 short sentences, "
+                 "You are Credence's in-app assistant. Answer in 1-3 short sentences, "
                  "plain language, grounded in the facts provided. If you don't know, say "
                  "what the user could check in the app. Context: " + grounding},
                 {"role": "user", "content": question},
@@ -185,7 +185,7 @@ def _try_llm(question: str, stats: dict, bill: dict) -> Optional[str]:
         headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
         if extract.OPENROUTER_KEY:
             headers["HTTP-Referer"] = "https://verdict-three-ashen.vercel.app"
-            headers["X-Title"] = "Verdict"
+            headers["X-Title"] = "Credence"
         url = f"{extract.AIPIPE_BASE}{extract.CHAT_ROUTE}"
         with httpx.Client(timeout=30) as client:
             r = client.post(url, json=payload, headers=headers)

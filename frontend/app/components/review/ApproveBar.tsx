@@ -27,7 +27,7 @@ export default function ApproveBar({ reviewed }: { reviewed: boolean }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `verdict_${resp?.domain || "record"}.csv`;
+    a.download = `credence_${resp?.domain || "record"}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

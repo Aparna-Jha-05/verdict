@@ -1,6 +1,6 @@
 """Accounts, credits & billing (demo-grade).
 
-Models the Verdict platform's commercial layer:
+Models the Credence platform's commercial layer:
   - a shared FREE-TRIAL credit pool usable across ALL domains,
   - per-domain PAID credit balances (buy only the domain you need),
   - ENTERPRISE orgs with a shared pooled balance and bulk member accounts.

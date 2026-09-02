@@ -52,7 +52,7 @@ export default function Sidebar({
         </div>
         {!mini && (
           <div>
-            <div className="text-lg font-extrabold leading-none tracking-tight">Verdict</div>
+            <div className="text-lg font-extrabold leading-none tracking-tight">Credence</div>
             <div className="mt-0.5 text-[10px] uppercase tracking-widest text-muted">
               Document Intelligence
             </div>

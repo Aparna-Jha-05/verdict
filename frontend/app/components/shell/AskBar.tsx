@@ -51,7 +51,7 @@ export default function AskBar() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Ask Verdict anything — your flags, credits, or how a check works…"
+            placeholder="Ask Credence anything — your flags, credits, or how a check works…"
             className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
           />
           {q && (
@@ -77,7 +77,7 @@ export default function AskBar() {
       {res && (
         <div className="mt-3 animate-pop rounded-xl border border-line/20 bg-card/70 p-3.5">
           <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-violet">
-            <Sparkles className="h-3 w-3" /> Verdict AI
+            <Sparkles className="h-3 w-3" /> Credence AI
           </div>
           <p className="text-sm leading-relaxed text-text">{res.answer}</p>
           {res.nav && (

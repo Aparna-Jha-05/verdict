@@ -4,7 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Verdict — Verify, Catch, Approve",
+  title: "Credence — Verify, Catch, Approve",
   description:
     "Vision-first invoice extraction with deterministic validation, fraud detection, and a human approval gate.",
 };

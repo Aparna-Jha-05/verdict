@@ -1,4 +1,4 @@
-# Verdict — Live Demo & Q&A Guide
+# Credence — Live Demo & Q&A Guide
 
 *Plain-language guide to the whole application as it stands now. Written so you
 can present it, and answer anything a mentor or judge throws at you, without
@@ -10,9 +10,9 @@ needing to open the code.*
 
 ---
 
-## 1. What Verdict is, in one breath
+## 1. What Credence is, in one breath
 
-Verdict is a **platform that turns any document into a trustworthy decision.** You
+Credence is a **platform that turns any document into a trustworthy decision.** You
 upload a document — an invoice, a receipt, a résumé, an ID, a contract, a bank
 statement — an AI vision model *reads* it, then plain rule-based code *checks* it
 for mistakes and fraud, some machine-learning adds *warning signals*, and finally a
@@ -45,7 +45,7 @@ didn't expect, it's captured and shown to the human — never silently thrown aw
 
 **Escalates the hard cases automatically.**
 A cheap, fast model runs by default. If it's unsure (low confidence) or the page is
-messy, Verdict automatically retries with a stronger model. You pay for the
+messy, Credence automatically retries with a stronger model. You pay for the
 expensive model only when you actually need it.
 
 **Checks the document with plain code (no AI).**
@@ -168,7 +168,7 @@ paid.**
 Those are a brilliant brain with no memory, no guarantees, and no paper trail. A
 chatbot will *confidently* say totals add up when they don't, forgets every past
 document, gives you text you have to re-parse, and can't show a regulator an audit
-trail. Verdict adds the memory (a ledger of past approvals for fraud/duplicate
+trail. Credence adds the memory (a ledger of past approvals for fraud/duplicate
 checks), the guarantees (deterministic math), the workflow (human approval, CSV,
 audit), cost control (cheap model by default), and it's safe from prompt-injection
 because the *deciding* layer never touches an LLM. It's the system around the brain.
@@ -189,7 +189,7 @@ and is shown to the human — nothing is dropped. (3) If it's a whole new docume
 
 **Q: Someone's résumé doesn't follow a normal design — will they be skipped?**
 No — and this is a strength. Old keyword-based screeners reject good candidates for
-unusual formatting. Verdict reads the image, so any layout works; unusual sections
+unusual formatting. Credence reads the image, so any layout works; unusual sections
 are captured, not lost; a hard-to-read résumé escalates to a stronger model and then
 goes to a human. Nobody is filtered out by the machine alone.
 
@@ -239,12 +239,12 @@ match, and richer ML signals. The pack design means each new domain is additive.
 - **Free trial:** 25 credits, usable on any document type.
 - **If a document fails with a "credits" error:** that's the *OpenRouter* account
   (the AI provider) needing a small top-up, or a free vision model set on the
-  backend — it is **not** a bug in Verdict. Everything except the live AI read
+  backend — it is **not** a bug in Credence. Everything except the live AI read
   (dashboard, ledger, audit, billing, tour) still works without it.
 - **First request is slow (~40s):** the free-tier backend was asleep and is waking.
   Warm it up before presenting.
 
-**The single sentence, if you only get one:** *"Verdict reads any document with AI,
+**The single sentence, if you only get one:** *"Credence reads any document with AI,
 verifies it with code you can trust, flags fraud with machine learning, and keeps
 the final decision with a human — one platform, many document types, pay only for
 what you use."*

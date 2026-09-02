@@ -11,8 +11,8 @@ export interface TourStep {
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    title: "Welcome to Verdict",
-    body: "Verdict reads any invoice with a vision model, verifies it with deterministic rules that never call an LLM, catches fraud a human would miss, and keeps the final call with you. This 90-second tour walks the whole arc.",
+    title: "Welcome to Credence",
+    body: "Credence reads any invoice with a vision model, verifies it with deterministic rules that never call an LLM, catches fraud a human would miss, and keeps the final call with you. This 90-second tour walks the whole arc.",
     cta: "Start the tour",
   },
   {
